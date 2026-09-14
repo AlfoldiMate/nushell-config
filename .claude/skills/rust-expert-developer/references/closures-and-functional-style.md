@@ -1,0 +1,1 @@
+../../../../../.profiles/dflt/.claude/skills/rust-expert-developer/references/closures-and-functional-style.md

@@ -1,0 +1,20 @@
+# Runtime state Nushell writes next to config.nu
+history.txt
+history.sqlite3*
+plugin.msgpackz
+.state/
+
+# Machine-local drop-ins (loaded automatically, never committed)
+autoload/*
+!autoload/README.md
+
+# Generated tool init files. On macOS the data dir is the config dir, so
+# `nu-config tools setup` writes them in here; on Linux they live outside.
+vendor/
+
+# Plugin binaries: per-platform and tied to the nu-plugin protocol version
+plugins/*
+!plugins/.gitkeep
+
+.DS_Store
+*.bak

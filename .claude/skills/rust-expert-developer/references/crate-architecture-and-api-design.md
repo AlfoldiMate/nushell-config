@@ -1,0 +1,1 @@
+../../../../../.profiles/dflt/.claude/skills/rust-expert-developer/references/crate-architecture-and-api-design.md

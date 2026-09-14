@@ -1,0 +1,80 @@
+# completions.nu — completion behaviour, the engine behind Tab, tool specs
+
+# ── Behaviour ─────────────────────────────────────────────────────────────────
+# Nushell's defaults are in effect (prefix matching, case-insensitive, quick
+# and partial completion, external commands from PATH). To change one, set a
+# leaf key here, e.g.:
+#   $env.config.completions.algorithm = "fuzzy"   # `gsw` finds `git switch`
+# `config nu --doc` documents every completions.* key. The engine below
+# honours algorithm and case_sensitive in its own filtering.
+
+# ── The engine ────────────────────────────────────────────────────────────────
+# modules/nu-complete: docs/completion.md explains it. In short, three layers:
+#   1. Nushell's own completer (built-ins, flags, cell paths, files).
+#   2. `@complete` externs with a spec per tool (completions/brew.nu, git.nu):
+#      positional completion from the tool's own data, carapace as fallback.
+#   3. The Tab menu source `nu-complete smart`, the only place that sees the
+#      whole line: columns/operators/values for `ls | where ⌶`, no files after
+#      commands that take no argument, no duplicate entries.
+use nu-complete *
+
+# ── Tool specs ────────────────────────────────────────────────────────────────
+# One module per tool in completions/ (on NU_LIB_DIRS). `use` is parse-time,
+# so these cannot sit inside `if (which brew ...)`; an extern for a tool that
+# is not installed only ever affects completion, never execution.
+use brew.nu *     # subcommands, flags, packages with descriptions, installed, taps
+use git.nu *      # subcommands, branches by recency, remotes, changed files, stashes
+use cargo.nu *    # subcommands, flags from --help, packages/targets/features of the workspace, crate names
+# Vendored nu_scripts modules go here too:  nu-config fetch completion docker
+#   use docker-completions.nu *
+
+# ── External argument completer ───────────────────────────────────────────────
+# When carapace is installed, its generated init file (nu-config tools setup)
+# sets $env.config.completions.external.completer. The specs above hand it
+# whatever they have no opinion on; without carapace those slots fall back to
+# Nushell's own knowledge of a command and then to file paths.
+#   brew install carapace  →  nu-config tools setup
+
+# ── Tab: the smart menu ───────────────────────────────────────────────────────
+# A custom menu is the only kind whose `source` closure gets the whole buffer
+# (a `source` on the stock completion_menu is ignored by Nushell 0.115), so
+# Tab is rebound to this one. Same look as completion_menu in keybindings.nu.
+# SMART_TAB lives in settings.nu.
+if $SMART_TAB {
+  $env.config.menus ++= [{
+    name: smart_menu
+    input_mode: cursor_prefix          # $buffer is the line up to the cursor
+    marker: "| "
+    type: {
+      layout: columnar
+      columns: 1
+      col_width: 80
+      col_padding: 2
+    }
+    style: {
+      text: green
+      selected_text: green_reverse
+      description_text: yellow
+      match_text: green
+      selected_match_text: green_reverse
+    }
+    source: {|buffer, position| nu-complete smart $buffer $position }
+  }]
+  # The stock Tab chain, pointed at the smart menu.
+  $env.config.keybindings ++= [{
+    name: smart_tab
+    modifier: none
+    keycode: tab
+    mode: [emacs vi_normal vi_insert]
+    event: {
+      until: [
+        { send: menu, name: smart_menu }
+        { send: menunext }
+        { edit: complete }
+      ]
+    }
+  }]
+  # The engine keeps every command's signature in stor; building that table
+  # costs ~115 ms, so a background job does it while you type the first line.
+  if $nu.is-interactive { job spawn { nu-complete warm } | ignore }
+}
