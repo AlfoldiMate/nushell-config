@@ -6,7 +6,7 @@ concern per file, every path derived from the repo's own location. Clone it
 anywhere, run one script, done. Verified on Nushell **0.115**.
 
 ```
-git clone <this repo> ~/.config/nushell
+git clone https://github.com/AlfoldiMate/nushell-config ~/.config/nushell
 nu ~/.config/nushell/install.nu
 ```
 
