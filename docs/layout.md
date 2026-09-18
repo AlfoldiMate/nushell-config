@@ -116,6 +116,40 @@ So `use git.nu *` resolves your copy if you have one and the shipped copy
 otherwise. Copying a shipped completion into your own `completions/` and
 editing it is the whole override mechanism.
 
+## Installing
+
+`install.nu` is seven screens, and every one of them is skippable:
+
+| | |
+|---|---|
+| 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
+| 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
+| 3. Terminal | is Ghostty installed, are you *running* in it, and the install line if not |
+| 4. Theme | the Nushell theme, and — when it is `"terminal"` — one of Ghostty's 463, previewed by painting the live terminal |
+| 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
+| 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |
+| 7. The plan | every line that will be written, then one yes |
+
+```nu
+nu install.nu              # the seven screens
+nu install.nu --defaults   # no questions, every shipped value
+nu install.nu --dry-run    # print the plan, change nothing
+```
+
+Nothing is written before screen 7 — the theme preview paints the terminal and
+`theme reset` hands it back, so even a cancelled installer leaves Ghostty's
+configuration alone. Fonts are the exception, because a font has to exist
+before it can be rendered; the installer asks before downloading one.
+
+With no terminal on stdin and stdout the installer takes every default by
+itself, which is what makes `curl … | sh` work without a flag.
+
+**The test that the layering is right:** accept every default and your
+`settings.nu` has no assignments in it at all — `nu-config knobs --overridden`
+comes back empty, against 64 knobs that exist. Nothing is copied out of
+`defaults.nu` "so you can see it". A value you never mention keeps tracking the
+distro, including across a `git pull` that changes it.
+
 ## Checking it
 
 ```nu

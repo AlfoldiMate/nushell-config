@@ -1,7 +1,8 @@
 #!/usr/bin/env nu
 # install.nu — point Nushell at this distro, and give you a directory of your own
 #
-#   nu install.nu                 set up, generate tool files, register plugins
+#   nu install.nu                 the interactive installer
+#   nu install.nu --defaults      every shipped default, no questions
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --skip-tools --skip-plugins
 #
@@ -11,7 +12,7 @@
 # What it builds
 #
 #   <config dir>/config.nu     three lines, pointing here      ← Nushell loads this
-#   <config dir>/settings.nu   your overrides, empty to start
+#   <config dir>/settings.nu   your overrides — and ONLY your overrides
 #   <config dir>/autoload/     your drop-ins
 #   <config dir>/completions/  what you fetch later
 #
@@ -20,6 +21,12 @@
 # Nushell derives history, the plugin registry and the autoload dirs from it.
 # This checkout stays out of it: nothing you own is ever written in here, so
 # `git pull` is always clean.
+#
+# The test that the layering is right: accept every default and your
+# settings.nu ends up with no assignments in it at all — `nu-config knobs
+# --overridden` comes back empty. Nothing is copied out of defaults.nu "so you
+# can see it"; what you never mention keeps its shipped value, including values
+# added by a later `git pull`.
 #
 # Migrating from the older layout, where this checkout WAS the config dir, is
 # handled: history, the plugin registry and autoload/ are moved out, and the
@@ -31,22 +38,338 @@ const ROOT = path self | path dirname
 # or nu-config's own imports (`use nu-complete *`) cannot resolve.
 const NU_LIB_DIRS = [($ROOT | path join modules)]
 use nu-config
+# The pickers. They are the same ones the installed shell gets — `theme`,
+# `font`, `ghostty set`, `terminal list` — so the installer is a demonstration
+# of the thing it installs rather than a second implementation of it.
+use terminal *
+# The shipped values, so a choice can be compared against them and only the
+# differences written down. Sourcing beats restating them: one file owns them.
+source ($ROOT | path join defaults.nu)
 
 def main [
   --dry-run       # print what would be done
+  --defaults      # no questions; every shipped default
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
 ] {
   print $"(ansi cyan_bold)Nushell distro(ansi reset)  ($ROOT)"
   print ""
 
-  let user = (nu-config platform-config-dir)
-  if ($user | path expand --no-symlink) == $ROOT {
-    error make { msg: $"This checkout is at ($user), which is Nushell's own config directory on this platform. Move it somewhere else — ~/.local/share/nushell-distro is a good home — and run install.nu again from there." }
+  # A terminal on both ends is what the pickers need. A script is never
+  # "interactive" even when you launched it from a shell, so this is the test —
+  # and it is also what makes `curl … | sh` fall back to defaults by itself.
+  let ask = (not $defaults) and (is-terminal --stdin) and (is-terminal --stdout)
+  if (not $ask) and (not $defaults) {
+    print $"(ansi yellow)no terminal on stdin/stdout — taking every default(ansi reset)"
+    print ""
   }
 
+  let plan = (
+    {}
+    | merge (screen-where --ask=$ask)
+    | merge (screen-modules --ask=$ask)
+    | merge (screen-terminal --ask=$ask --dry-run=$dry_run)
+    | merge (screen-theme --ask=$ask)
+    | merge (screen-font --ask=$ask --dry-run=$dry_run)
+  )
+  screen-tools
+  if $ask and (not (confirm $plan)) {
+    print "nothing was changed"
+    return
+  }
+
+  apply $plan --dry-run=$dry_run --skip-tools=$skip_tools --skip-plugins=$skip_plugins
+}
+
+# ── 1. Where ──────────────────────────────────────────────────────────────────
+
+def screen-where [--ask]: nothing -> record {
+  print $"(ansi cyan_bold)1. Where(ansi reset)"
+  let default = (nu-config platform-config-dir)
+  print $"  this checkout   ($ROOT)"
+  print $"  your config     ($default)"
+  print $"  (ansi dark_gray)Nushell reads config.nu from that directory and derives history, the(ansi reset)"
+  print $"  (ansi dark_gray)plugin registry and the autoload dirs from it, so it is not a choice(ansi reset)"
+  print $"  (ansi dark_gray)unless you also set XDG_CONFIG_HOME.(ansi reset)"
+
+  let user = if not $ask { $default } else {
+    # Short labels: the path is printed above, and an option long enough to
+    # wrap makes the menu unusable (and unscriptable — it stopped submitting).
+    match (["use the default" "somewhere else"] | input list "your configuration directory") {
+      "somewhere else" => {
+        # Emptiness is checked BEFORE expanding, because `"" | path expand` is
+        # the current directory — which, running this script, is this checkout.
+        let typed = (input "path: " | str trim)
+        if ($typed | is-empty) { $default } else { $typed | path expand --no-symlink }
+      }
+      _ => $default
+    }
+  }
+  # Two checks, because the obvious one is not enough: `path expand` keeps a
+  # trailing separator, so a plain `==` against $ROOT silently passed a path
+  # that WAS this checkout and wrote a config.nu into the repository.
+  # `path split | path join` normalises; distro.nu catches any checkout.
+  let same = (($user | path expand --no-symlink | path split | path join) == ($ROOT | path expand --no-symlink | path split | path join))
+  if $same or (($user | path join distro.nu) | path exists) {
+    error make { msg: $"($user) is a checkout of the distro. Your configuration has to live somewhere else — that separation is the whole point, and it is what keeps `git pull` clean and your history out of version control." }
+  }
+  print ""
+  { user: $user }
+}
+
+# ── 2. Modules ────────────────────────────────────────────────────────────────
+
+def screen-modules [--ask]: nothing -> record {
+  print $"(ansi cyan_bold)2. Modules(ansi reset)"
+  let all = (nu-config module list)
+  for m in $all {
+    let dep = (if $m.deps == "—" { "" } else { $"  ($m.deps)" })
+    let cost = (if $m.cost == 0ns { "" } else { $"($m.cost)" })
+    print $"  ($m.module | fill --width 12) ($cost | fill --width 7) ($m.description)($dep)"
+  }
+  print $"  (ansi dark_gray)cost is what the module adds to startup when it loads; a lazy one pays it(ansi reset)"
+  print $"  (ansi dark_gray)on the first line that mentions it, not at every shell start(ansi reset)"
+
+  if not $ask { print ""; return { modules: null } }
+
+  let chosen = if (yes-no "choose which modules to enable?" --default-no) {
+    # nu-config is not offered: it is how you repair everything else.
+    let optional = ($all | where module != "nu-config")
+    let picked = (
+      $optional
+      | input list --multi --display {|m| $"($m.module | fill --width 12) ($m.cost)  ($m.description)" } "space to toggle, enter to accept"
+    )
+    (["nu-config"] ++ ($picked | get module))
+  } else { $MODULES }
+
+  # Lazy is the shipped answer for everything that has a trigger word, and the
+  # question "should this cost you 97 ms at every start" has one sensible reply.
+  let lazy = ($MODULES_LAZY | where {|m| $m in $chosen })
+  print ""
+  { modules: (if ($chosen | sort) == ($MODULES | sort) { null } else { { enabled: $chosen, lazy: $lazy } }) }
+}
+
+# ── 3. Terminal ───────────────────────────────────────────────────────────────
+
+def screen-terminal [--ask, --dry-run]: nothing -> record {
+  print $"(ansi cyan_bold)3. Terminal(ansi reset)"
+  let t = (terminal list | get 0)
+  let here = (terminal current)
+  print $"  ($t.terminal | fill --width 10) (if $t.installed { $"installed at ($t.path)" } else { "not installed" })"
+  if $here != null {
+    print $"  (ansi green)you are running in it(ansi reset) — the theme preview below will be real"
+  } else {
+    print $"  (ansi yellow)this session is not Ghostty(ansi reset) — a theme can still be chosen and written,"
+    print $"  (ansi yellow)but the live preview would paint a terminal that is not the one being(ansi reset)"
+    print $"  (ansi yellow)configured, so it is a lie and it is skipped(ansi reset)"
+  }
+  if not $t.installed {
+    let plan = (terminal install-plan)
+    print $"  install:  ($plan.command | default $plan.note)"
+    if $ask and (not $dry_run) and $plan.runnable and (yes-no "install Ghostty now?" --default-no) {
+      terminal install --yes
+    }
+  }
+  print ""
+  { ghostty: ((terminal list | get 0.installed)), in_ghostty: ($here != null) }
+}
+
+# ── 4. Theme ──────────────────────────────────────────────────────────────────
+#
+# Two different things are called "theme" and the screen has to keep them apart.
+# THEME is a Nushell colour file in themes/. Its shipped value, "terminal", is
+# sixteen ANSI colour NAMES and no hex, which hands the actual colours to the
+# terminal — and then the second choice, which Ghostty theme, is what decides
+# what they look like. Choosing Catppuccin instead pins hex in Nushell and
+# ignores the terminal entirely.
+
+def screen-theme [--ask]: nothing -> record {
+  print $"(ansi cyan_bold)4. Theme(ansi reset)"
+  print $"  ($THEME)  (ansi dark_gray)— the shipped default: Nushell follows your terminal's sixteen colours(ansi reset)"
+  if not $ask { print ""; return { theme: null, ghostty_theme: null } }
+
+  let themes = (ls ($ROOT | path join themes) | get name | each {|f| $f | path basename | str replace ".nu" "" } | sort)
+  let nu_theme = if (yes-no $"keep THEME = \"($THEME)\"?") { $THEME } else {
+    ($themes | input list "Nushell theme") | default $THEME
+  }
+
+  # Only "terminal" delegates to Ghostty; every other theme carries its own hex.
+  mut ghostty_theme = null
+  if $nu_theme == "terminal" and (terminal list | get 0.installed) {
+    # Default no, like every other question here: pressing Enter through the
+    # whole installer has to end with nothing written and no override.
+    if (yes-no "pick a Ghostty theme? \(its colours become Nushell's\)" --default-no) {
+      $ghostty_theme = (pick-ghostty-theme)
+    }
+  }
+  print ""
+  {
+    theme: (if $nu_theme == $THEME { null } else { $nu_theme })
+    ghostty_theme: $ghostty_theme
+  }
+}
+
+# The theme picker, but choosing only: nothing is written here, because the
+# whole plan is confirmed before anything is. `theme preview` paints the live
+# terminal and `theme reset` hands it back, so the preview costs nothing either.
+def pick-ghostty-theme []: nothing -> any {
+  let rows = (theme list --swatches | select theme colours)
+  let before = (ghostty settings | get -o theme)
+  mut chosen = null
+  mut picking = true
+  while $picking {
+    let pick = ($rows | input list --fuzzy --display {|r| $"($r.theme) ($r.colours)" } "Ghostty theme")
+    if $pick == null { $picking = false; continue }
+    theme preview $pick.theme
+    match ([$"keep ($pick.theme)" "pick another" "leave it as it was"] | input list $"($pick.theme) — this is it") {
+      $a if ($a | default "" | str starts-with "keep") => { $chosen = $pick.theme; $picking = false }
+      "pick another" => { theme reset }
+      _ => { theme reset; $picking = false }
+    }
+  }
+  if $chosen == null { theme reset }
+  # The paint is left on the screen when a theme was kept; the write happens in
+  # `apply`, so a cancelled confirmation still leaves Ghostty's config alone.
+  if $chosen == null and $before != null { theme preview $before }
+  $chosen
+}
+
+# ── 5. Font ───────────────────────────────────────────────────────────────────
+
+def screen-font [--ask, --dry-run]: nothing -> record {
+  print $"(ansi cyan_bold)5. Font(ansi reset)"
+  if not ((terminal list | get 0.installed)) {
+    print "  Ghostty is not installed, so there is nothing to set a font on"
+    print ""
+    return { font: null }
+  }
+  let rows = (font list)
+  let now = (ghostty settings | get -o font-family)
+  print $"  current   ($now | default "Ghostty's own built-in JetBrains Mono")"
+  print $"  installed ((($rows | where installed | get font) | str join ', ') | default 'none of the fifteen')"
+  if (not $ask) or $dry_run {
+    if $dry_run { print $"  (ansi dark_gray)a font has to be downloaded to be seen, so the picker is skipped on a dry run(ansi reset)" }
+    print ""
+    return { font: null }
+  }
+  if not (yes-no "pick a Nerd Font?" --default-no) { print ""; return { font: null } }
+
+  mut chosen = null
+  mut picking = true
+  while $picking {
+    let pick = (
+      font list
+      | input list --fuzzy --display {|r|
+          let mark = (if $r.installed { "✓ " } else { "  " })
+          $"($mark)($r.font | fill --width 16) ($r.what)"
+        } "Nerd Font"
+    )
+    if $pick == null { $picking = false; continue }
+    if not $pick.installed { font install $pick.font }
+    let row = (font list | where font == $pick.font | get 0)
+    if not $row.installed { continue }
+    match ([$"keep ($row.family)" "see it in a new window" "pick another"] | input list $row.family) {
+      $a if ($a | default "" | str starts-with "keep") => { $chosen = $row.family; $picking = false }
+      "see it in a new window" => { font preview $pick.font }
+      "pick another" => { }
+      _ => { $picking = false }
+    }
+  }
+  print ""
+  { font: $chosen }
+}
+
+# ── 6. Tools ──────────────────────────────────────────────────────────────────
+#
+# Reporting only. Nothing here is installed by this script: these are other
+# people's package managers, and a tool that appears later is picked up by
+# re-running `nu-config tools setup`, which is the whole point of installation
+# being the switch.
+
+def screen-tools []: nothing -> nothing {
+  print $"(ansi cyan_bold)6. Tools(ansi reset)"
+  for t in (nu-config tools status) {
+    let mark = (if $t.installed { $"(ansi green)ok(ansi reset)" } else { $"(ansi dark_gray)--(ansi reset)" })
+    print $"  ($mark) ($t.tool | fill --width 9) ($t.what)"
+  }
+  let missing = (nu-config tools status | where not installed | get tool)
+  if ($missing | is-not-empty) {
+    print $"  (ansi dark_gray)not installed: ($missing | str join ', ') — install them and re-run `nu-config tools setup`(ansi reset)"
+  }
+  # Starship is wired by conf/prompt.nu rather than by a generated file, so it
+  # is not in the tool registry and has to be mentioned here.
+  if (which starship | is-empty) {
+    print $"  (ansi dark_gray)-- starship   prompt; without it Nushell's own prompt is used(ansi reset)"
+  }
+  print ""
+}
+
+# ── 7. Confirm ────────────────────────────────────────────────────────────────
+
+def confirm [plan: record]: nothing -> bool {
+  print $"(ansi cyan_bold)7. The plan(ansi reset)"
+  for line in (plan-lines $plan) { print $"  ($line)" }
+  print ""
+  yes-no "apply this?"
+}
+
+def plan-lines [plan: record]: nothing -> list<string> {
+  let settings = (settings-block $plan)
+  ([
+    $"write ($plan.user | path join config.nu), pointing at ($ROOT)"
+    (if ($settings | is-empty) {
+      "settings.nu: no overrides — every value stays the distro's"
+    } else {
+      $"settings.nu: ($settings | length) override\(s\)"
+    })
+  ]
+  ++ ($settings | each {|l| $"  ($l)" })
+  ++ [
+    (if ($plan.ghostty_theme? | default null) != null { $"Ghostty theme = ($plan.ghostty_theme)" })
+    (if ($plan.font? | default null) != null { $"Ghostty font-family = ($plan.font)" })
+    "generate tool init files, register plugins"
+  ]) | compact
+}
+
+# The lines that go into settings.nu, and nothing else. A choice equal to the
+# shipped value produces no line at all — that is what makes an untouched knob
+# keep tracking the distro across a `git pull`.
+def settings-block [plan: record]: nothing -> list<string> {
+  ([
+    (if ($plan.modules? | default null) != null {
+      $"const MODULES = [($plan.modules.enabled | str join ' ')]"
+    })
+    (if ($plan.modules? | default null) != null {
+      $"const MODULES_LAZY = [($plan.modules.lazy | str join ' ')]"
+    })
+    (if ($plan.theme? | default null) != null { $"const THEME = \"($plan.theme)\"" })
+    # A hex theme wants ls and bat to match it; "terminal" does not, and its
+    # shipped VIVID_THEME = "ansi" is already right.
+    (if ($plan.theme? | default null) != null and (($plan.theme? | default "") != "terminal") {
+      $"$env.VIVID_THEME = \"($plan.theme)\""
+    })
+  ] | compact)
+}
+
+# ── Applying ──────────────────────────────────────────────────────────────────
+
+def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> nothing {
+  let user = $plan.user
+
   let migrated = (unlink-old-layout $user --dry-run=$dry_run)
-  make-user-dir $user --dry-run=$dry_run --fresh=$migrated
+  make-user-dir $user (settings-block $plan) --dry-run=$dry_run --fresh=$migrated
+
+  if ($plan.ghostty_theme? | default null) != null or ($plan.font? | default null) != null {
+    print $"(ansi cyan_bold)Ghostty(ansi reset)"
+    let settings = (
+      {}
+      | merge (if ($plan.ghostty_theme? | default null) != null { { theme: $plan.ghostty_theme } } else { {} })
+      | merge (if ($plan.font? | default null) != null { { font-family: $plan.font } } else { {} })
+    )
+    for s in ($settings | transpose k v) { print $"  ($s.k) = ($s.v)" }
+    if not $dry_run { ghostty set $settings }
+    print ""
+  }
 
   # Everything below depends on $nu.data-dir and $nu.plugin-path, which this
   # process computed BEFORE the user dir existed. A fresh `nu` sees it, so the
@@ -86,6 +409,17 @@ def main [
   }
 }
 
+# ── Asking ────────────────────────────────────────────────────────────────────
+
+# `input list` rather than a typed y/n: it needs one keystroke, it cannot be
+# mistyped, and Esc means no without a special case.
+def yes-no [question: string, --default-no]: nothing -> bool {
+  let options = if $default_no { ["no" "yes"] } else { ["yes" "no"] }
+  ($options | input list $question) == "yes"
+}
+
+# ── The user directory ────────────────────────────────────────────────────────
+
 # The previous layout symlinked the config dir at this checkout. Replace that
 # link with a real directory and carry the state that lived in here out to it.
 # Returns true when the old layout was found, so the caller knows the user
@@ -122,7 +456,7 @@ def unlink-old-layout [user: path, --dry-run]: nothing -> bool {
   true
 }
 
-def make-user-dir [user: path, --dry-run, --fresh] {
+def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh] {
   print $"(ansi cyan_bold)Your configuration(ansi reset)  ($user)"
 
   let cfg = ($user | path join config.nu)
@@ -147,13 +481,7 @@ def make-user-dir [user: path, --dry-run, --fresh] {
     }
   }
 
-  let settings = ($user | path join settings.nu)
-  if (not $fresh) and ($settings | path exists) {
-    print "  settings.nu is yours — left alone"
-  } else {
-    print "  writing settings.nu (every knob commented out)"
-    if not $dry_run { cp ($ROOT | path join templates settings.nu) $settings }
-  }
+  write-settings ($user | path join settings.nu) $overrides --dry-run=$dry_run --fresh=$fresh
 
   for d in [autoload completions themes modules plugins] {
     let p = ($user | path join $d)
@@ -169,4 +497,29 @@ def make-user-dir [user: path, --dry-run, --fresh] {
     if not $dry_run { cp ($ROOT | path join templates autoload-README.md) $ar }
   }
   print ""
+}
+
+# settings.nu is the template's header — which is guidance, all of it commented
+# — plus the chosen overrides and nothing else. An existing one is never
+# rewritten: it is yours, and the overrides are appended under a dated mark so
+# it is obvious what put them there.
+def write-settings [file: path, overrides: list<string>, --dry-run, --fresh] {
+  let exists = (not $fresh) and ($file | path exists)
+  if $exists and ($overrides | is-empty) {
+    print "  settings.nu is yours — left alone"
+    return
+  }
+  let head = if $exists { (open --raw $file | str trim --right --char (char nl)) } else {
+    (open --raw ($ROOT | path join templates settings.nu) | str trim --right --char (char nl))
+  }
+  let body = if ($overrides | is-empty) { [] } else {
+    ["" $"# chosen with `nu install.nu` on (date now | format date '%Y-%m-%d')"] ++ $overrides
+  }
+  if ($overrides | is-empty) {
+    print "  writing settings.nu — no overrides, every value stays the distro's"
+  } else {
+    print $"  writing settings.nu with ($overrides | length) override\(s\):"
+    for o in $overrides { print $"    ($o)" }
+  }
+  if not $dry_run { ([$head] ++ $body ++ [""]) | str join (char nl) | save -f $file }
 }
