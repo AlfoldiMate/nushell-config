@@ -1,38 +1,56 @@
 #!/usr/bin/env nu
-# install.nu — make this checkout the live Nushell configuration
+# install.nu — point Nushell at this distro, and give you a directory of your own
 #
-#   nu install.nu                 link, generate tool files, register plugins, doctor
+#   nu install.nu                 set up, generate tool files, register plugins
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --skip-tools --skip-plugins
 #
 # Idempotent: safe to re-run after `git pull`, after installing a tool, or
 # after upgrading Nushell.
 #
-# How the link works: Nushell derives every path (autoload dirs, plugin
-# registry, history) from its config directory, so pointing that one
-# directory at this repo redirects all of them. On Linux the default config
-# dir is ~/.config/nushell, so a clone there needs no link at all. On macOS
-# (~/Library/Application Support/nushell) and Windows (%APPDATA%\nushell) a
-# symlink / junction is created. An existing real directory is renamed, not
-# deleted, and its history is copied over.
+# What it builds
+#
+#   <config dir>/config.nu     three lines, pointing here      ← Nushell loads this
+#   <config dir>/settings.nu   your overrides, empty to start
+#   <config dir>/autoload/     your drop-ins
+#   <config dir>/completions/  what you fetch later
+#
+# The config dir is Nushell's own (~/.config/nushell on Linux, ~/Library/
+# Application Support/nushell on macOS, %APPDATA%\nushell on Windows), because
+# Nushell derives history, the plugin registry and the autoload dirs from it.
+# This checkout stays out of it: nothing you own is ever written in here, so
+# `git pull` is always clean.
+#
+# Migrating from the older layout, where this checkout WAS the config dir, is
+# handled: history, the plugin registry and autoload/ are moved out, and the
+# symlink is replaced by a real directory.
 
 const ROOT = path self | path dirname
-use modules/nu-config
+
+# A script loads no config, so the module search path has to be declared here
+# or nu-config's own imports (`use nu-complete *`) cannot resolve.
+const NU_LIB_DIRS = [($ROOT | path join modules)]
+use nu-config
 
 def main [
   --dry-run       # print what would be done
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
 ] {
-  print $"(ansi cyan_bold)Installing Nushell configuration from(ansi reset) ($ROOT)"
+  print $"(ansi cyan_bold)Nushell distro(ansi reset)  ($ROOT)"
   print ""
 
-  link-config-dir --dry-run=$dry_run
-  ensure-autoload --dry-run=$dry_run
+  let user = (nu-config platform-config-dir)
+  if ($user | path expand --no-symlink) == $ROOT {
+    error make { msg: $"This checkout is at ($user), which is Nushell's own config directory on this platform. Move it somewhere else — ~/.local/share/nushell-distro is a good home — and run install.nu again from there." }
+  }
+
+  let migrated = (unlink-old-layout $user --dry-run=$dry_run)
+  make-user-dir $user --dry-run=$dry_run --fresh=$migrated
 
   # Everything below depends on $nu.data-dir and $nu.plugin-path, which this
-  # process computed BEFORE the link existed (and with the symlink resolved).
-  # A fresh `nu` sees the new link, so the remaining steps run in a child.
+  # process computed BEFORE the user dir existed. A fresh `nu` sees it, so the
+  # remaining steps run in a child that loads the new config for real.
   let steps = ([
     (if $skip_tools { null } else if $dry_run {
       'print $"(ansi cyan_bold)Tool init files(ansi reset)  → (nu-config tools dir)"; nu-config tools status | select tool installed state | print; print ""'
@@ -46,8 +64,19 @@ def main [
     })
   ] | compact)
   if ($steps | is-not-empty) {
-    let script = ([$"use ($ROOT | path join modules nu-config)"] ++ $steps | str join "; ")
-    ^$nu.current-exe -n -c $script
+    if $dry_run {
+      # -n: report against this checkout without loading anything. NU_LIB_DIRS
+      # has to be handed over, because a config-less nu has no search path.
+      let script = ([$"use nu-config"] ++ $steps | str join "; ")
+      with-env { NU_LIB_DIRS: ($ROOT | path join modules) } {
+        ^$nu.current-exe -n -c $script
+      }
+    } else {
+      # -l: load the config that was just written, so $nu.data-dir and
+      # $nu.plugin-path are the new ones rather than the ones this process
+      # computed before the user directory existed.
+      ^$nu.current-exe -l -c ($steps | str join "; ")
+    }
   }
 
   if $dry_run {
@@ -57,89 +86,87 @@ def main [
   }
 }
 
-def link-config-dir [--dry-run] {
-  let target = (nu-config platform-config-dir)
-  print $"(ansi cyan_bold)Config dir(ansi reset)  ($target)"
+# The previous layout symlinked the config dir at this checkout. Replace that
+# link with a real directory and carry the state that lived in here out to it.
+# Returns true when the old layout was found, so the caller knows the user
+# directory is starting empty.
+def unlink-old-layout [user: path, --dry-run]: nothing -> bool {
+  if not ($user | path exists) { return false }
+  # `path type` reports the link itself; `path expand` resolves it.
+  if ($user | path type) != "symlink" or ($user | path expand) != $ROOT { return false }
 
-  if ($target | path expand --no-symlink) == $ROOT {
-    print "  this repo IS the config dir — nothing to link"
-    print ""
-    return
+  print $"(ansi cyan_bold)Previous layout(ansi reset)"
+  print $"  ($user) is a link to this checkout — replacing it with a directory of your own"
+  if not $dry_run {
+    if $nu.os-info.name == "windows" { ^cmd /c rmdir $user } else { ^rm $user }
+    mkdir $user
   }
-
-  let kind = (entry-kind $target)
-  if $kind == "symlink" and ($target | path expand) == $ROOT {
-    print "  already linked here"
-    print ""
-    return
+  # State Nushell wrote into the checkout through that link.
+  for f in [history.txt history.sqlite3 history.sqlite3-wal history.sqlite3-shm plugin.msgpackz] {
+    let src = ($ROOT | path join $f)
+    if ($src | path exists) {
+      print $"  moving ($f) out of the checkout"
+      if not $dry_run { mv $src ($user | path join $f) }
+    }
   }
-
-  match $kind {
-    "symlink" => {
-      let old = ($target | path expand)
-      print $"  currently a link to ($old) — replacing it \(that directory is left untouched\)"
-      if not $dry_run { remove-link $target }
-      if not $dry_run { copy-history-from $old }
+  for d in [autoload vendor .state plugins] {
+    let src = ($ROOT | path join $d)
+    # `plugins/` ships a .gitkeep; only move it when it holds something else.
+    let has = (($src | path exists) and ((try { ls -a $src | where name !~ '\.gitkeep$' } catch { [] }) | is-not-empty))
+    if $has {
+      print $"  moving ($d)/ out of the checkout"
+      if not $dry_run { mv $src ($user | path join $d) }
     }
-    "dir" => {
-      let backup = $"($target).backup-(date now | format date '%Y%m%d-%H%M%S')"
-      print $"  currently a real directory — renaming it to ($backup)"
-      if not $dry_run { mv $target $backup }
-      if not $dry_run { copy-history-from $backup }
-    }
-    "missing" => {
-      print "  does not exist yet"
-      if not $dry_run { mkdir ($target | path dirname) }
-    }
-    _ => { error make { msg: $"($target) exists but is not a directory or link; move it aside first" } }
   }
-
-  print $"  linking ($target) → ($ROOT)"
-  if not $dry_run { make-link $target }
   print ""
+  true
 }
 
-# "symlink" | "dir" | "file" | "missing"
-def entry-kind [path: path]: nothing -> string {
-  if not ($path | path exists) { return "missing" }
-  let row = (ls -la ($path | path dirname) | where name == $path | get -o 0)
-  if $row == null { return "missing" }
-  $row.type
-}
+def make-user-dir [user: path, --dry-run, --fresh] {
+  print $"(ansi cyan_bold)Your configuration(ansi reset)  ($user)"
 
-def make-link [target: path] {
-  if $nu.os-info.name == "windows" {
-    ^cmd /c mklink /J $target $ROOT | ignore
+  let cfg = ($user | path join config.nu)
+  # After a migration the directory is brand new; on a dry run it has not been
+  # emptied yet, so anything still in it belongs to the layout being replaced.
+  let existing = if $fresh { null } else if ($cfg | path exists) { open --raw $cfg } else { null }
+
+  if $existing != null and ($existing | str contains $ROOT) {
+    print "  config.nu already points here"
   } else {
-    ^ln -s $ROOT $target
-  }
-}
-
-def remove-link [target: path] {
-  if $nu.os-info.name == "windows" {
-    ^cmd /c rmdir $target
-  } else {
-    ^rm $target      # removes the link only; `rm -r` would follow it
-  }
-}
-
-# Carry history over from the previous config dir if this repo has none yet.
-def copy-history-from [old: path] {
-  for f in [history.txt history.sqlite3] {
-    let src = ($old | path join $f)
-    let dst = ($ROOT | path join $f)
-    if ($src | path exists) and not ($dst | path exists) {
-      cp $src $dst
-      print $"  copied ($f) from the previous config"
+    if $existing != null {
+      let backup = $"($cfg).backup-(date now | format date '%Y%m%d-%H%M%S')"
+      print $"  config.nu exists and points somewhere else — keeping it as ($backup | path basename)"
+      if not $dry_run { cp $cfg $backup }
+    }
+    print $"  writing config.nu → ($ROOT)"
+    if not $dry_run {
+      mkdir $user
+      open --raw ($ROOT | path join templates config.nu)
+      | str replace --all "@DISTRO@" $ROOT
+      | save -f $cfg
     }
   }
-}
 
-def ensure-autoload [--dry-run] {
-  let dir = ($ROOT | path join autoload)
-  if not ($dir | path exists) {
-    print $"(ansi cyan_bold)autoload/(ansi reset)  creating ($dir) for machine-local drop-ins"
-    if not $dry_run { mkdir $dir }
-    print ""
+  let settings = ($user | path join settings.nu)
+  if (not $fresh) and ($settings | path exists) {
+    print "  settings.nu is yours — left alone"
+  } else {
+    print "  writing settings.nu (every knob commented out)"
+    if not $dry_run { cp ($ROOT | path join templates settings.nu) $settings }
   }
+
+  for d in [autoload completions themes modules plugins] {
+    let p = ($user | path join $d)
+    if not ($p | path exists) {
+      print $"  creating ($d)/"
+      if not $dry_run { mkdir $p }
+    }
+  }
+
+  # Explain the drop-in layer where someone will actually find it.
+  let ar = ($user | path join autoload README.md)
+  if not ($ar | path exists) {
+    if not $dry_run { cp ($ROOT | path join templates autoload-README.md) $ar }
+  }
+  print ""
 }

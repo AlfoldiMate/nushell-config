@@ -1,0 +1,31 @@
+{
+  description: "Claude Code in the shell: agent ask | exec | skill | command"
+  docs: "README.md"
+  # 13 ms to parse. stub.nu keeps the session id, the Alt+E binding and the
+  # checkpoint sweep alive in every shell without loading the body.
+  lazy: true
+  requires: [
+    {
+      bin: "claude"
+      hard: true
+      why: "every verb runs one `claude -p` turn"
+      install: {
+        macos: "brew install --cask claude-code"
+        linux: "curl -fsSL https://claude.ai/install.sh | sh"
+        windows: "irm https://claude.ai/install.ps1 | iex"
+      }
+    }
+  ]
+  knobs: {
+    AGENT_MODEL:              { default: "{ask: sonnet, exec: sonnet, ...}", about: "model per verb; null keeps Claude Code's default" }
+    AGENT_EFFORT:             { default: "{ask: low, exec: low, ...}", about: "reasoning effort per verb" }
+    AGENT_CONFIRM:            { default: "[rm, kill, sudo, ...]", about: "proposals matching these ask for a typed yes" }
+    AGENT_PERMISSION_MODE:    { default: "dontAsk", about: "dontAsk denies writes; acceptEdits lets skills edit files" }
+    AGENT_ALLOWED_TOOLS:      { default: "[Read, Glob, Grep, ...]", about: "what a skill or command turn may do unasked" }
+    AGENT_COMPLETION_TOOLS:   { default: "[Bash, Read, Write, ...]", about: "what `agent completion` may use" }
+    AGENT_COMPLETION_MAX_TURNS: { default: 150, about: "cap on a runaway completion build" }
+    AGENT_CHECKPOINT:         { default: true, about: "checkpoint a closed shell's session into agmem" }
+    AGENT_CHECKPOINT_MIN_TURNS: { default: 3, about: "sessions shorter than this are dropped, not checkpointed" }
+    AGENT_DEBUG:              { default: false, about: "sweep and turn detail on stderr" }
+  }
+}

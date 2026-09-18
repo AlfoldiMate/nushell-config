@@ -232,7 +232,7 @@ def expand-aliases [prefix: string]: nothing -> string {
 # [{ columns: { name: { type, value } } }]. At most 60 rows, memoised.
 def probe [prefix: string]: nothing -> list<record> {
   let prefix = (expand-aliases $prefix)
-  # A provider (conf/odata.nu: $env.NU_COMPLETE_PROVIDERS) answers for a
+  # A provider (modules/odata (activate): $env.NU_COMPLETE_PROVIDERS) answers for a
   # command whose columns are known without running it. It sees the first
   # segment; the stages after it do not change the columns except `get`,
   # which is left to the probe (and refused for a non-built-in).

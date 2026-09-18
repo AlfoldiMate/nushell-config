@@ -1,4 +1,7 @@
-# env.nu — PATH, editor, environment variables
+# env.nu — PATH and the environment variables that have to be computed.
+#
+# Plain values (PAGER, LESS, ...) live in defaults.nu. What is here needs code:
+# PATH is built per-OS, and EDITOR is whichever of EDITORS exists on this machine.
 
 use std/util "path add"
 
@@ -22,11 +25,6 @@ if $editor != null {
   $env.VISUAL = $env.EDITOR
   $env.config.buffer_editor = $editor
 }
-
-# ── Pager ─────────────────────────────────────────────────────────────────────
-# -R keeps colour, -F quits when it fits on one screen, -X leaves output visible.
-$env.PAGER = "less"
-$env.LESS = "-RFX"
 
 # ── Converting environment variables ──────────────────────────────────────────
 # PATH is already a list. To present another colon-separated variable as a

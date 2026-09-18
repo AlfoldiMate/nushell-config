@@ -1,0 +1,14 @@
+{
+  description: "The completion engine behind Tab: pipeline-aware, spec-driven"
+  docs: "../../docs/completion.md"
+  # Eager by design: it owns the Tab menu, which must answer on the very first
+  # keystroke of the first line. 8.6 ms.
+  lazy: false
+  requires: [
+    { bin: "carapace", hard: false, why: "answers any slot a spec has no opinion on",
+      install: { macos: "brew install carapace", linux: "see https://carapace.sh", windows: "scoop install carapace" } }
+  ]
+  knobs: {
+    NU_COMPLETE_EVAL: { default: "safe", about: "run the typed pipeline to offer columns: safe | all | off" }
+  }
+}

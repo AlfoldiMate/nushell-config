@@ -12,3 +12,12 @@
 export use engine.nu *
 export use cache.nu *
 export use smart.nu *
+
+# Run once the engine is in scope. The Tab menu itself is wired in
+# conf/completions.nu, because its look and its keybinding are configuration.
+export def --env "nu-complete activate" []: nothing -> nothing {
+  $env.NU_COMPLETE_EVAL = ($env.NU_COMPLETE_EVAL? | default "safe")
+  # The engine keeps every command's signature in stor; building that table
+  # costs ~115 ms, so a background job does it while you type the first line.
+  if $nu.is-interactive { job spawn { nu-complete warm } | ignore }
+}

@@ -77,7 +77,7 @@ returns the line: `agent exec ... | save cmd.nu`.
 
 Terminal.app needs "Use Option as Meta key" for Alt+E; iTerm2, Ghostty,
 WezTerm, Kitty and Alacritty send it by default. To rebind, change the
-`agent_line` entry in `conf/agent.nu`.
+`agent_line` entry in `modules/agent/stub.nu`.
 
 ## What the model knows about your shell
 
@@ -127,8 +127,10 @@ records each checkpoint with its duration.
 
 ## Configuration
 
-All knobs are in the Agent block of `conf/settings.nu`; machine-local
-overrides go in `autoload/`.
+The defaults live in this module (`meta.nuon` declares them, `setting` in
+`mod.nu` applies them), so there is nothing to uncomment to get started.
+Override a knob in your own `settings.nu`; machine-local tweaks go in
+`autoload/`. `nu-config knobs | where owner == agent` lists them.
 
 | Knob | Default | Meaning |
 |---|---|---|
@@ -154,12 +156,15 @@ $env.AGENT_CONFIRM ++= ['\bdocker\b.*\b(rm|prune)\b']
 ## Files
 
 ```
-modules/agent/mod.nu        the commands
-conf/agent.nu               `use agent`, session id, startup sweep, Alt+E
-conf/settings.nu            the knobs (Agent block)
-docs/agent.md               design, measured costs, limits
-.state/agent/               gitignored state: sessions/, commands.nuon (skill and
-                            command names from the last turn), sweep.log
+modules/agent/mod.nu        the commands, and `agent activate`
+modules/agent/stub.nu       session id, startup sweep, Alt+E — loaded in every
+                            shell, so the 13 ms body need not be
+modules/agent/load.nu       `use agent` + activate; sourced eagerly or by the
+                            lazy hook, so both paths run the same file
+modules/agent/meta.nuon     description, dependencies, knobs
+<your>/settings.nu          your overrides
+<your>/.state/agent/        sessions/, commands.nuon (skill and command names
+                            from the last turn), sweep.log
 ```
 
 ## Limitations

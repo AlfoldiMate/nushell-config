@@ -1,14 +1,18 @@
 # CLAUDE.md
 
-This repo is the live Nushell configuration: the platform config dir is a
-symlink to it, so an edit takes effect in the next shell and a parse error
-breaks every new terminal. Verify before reporting done:
+This repo is the live Nushell **distro**: the user's config dir sources it, so
+an edit takes effect in the next shell and a parse error breaks every new
+terminal. `docs/layout.md` is the map. Verify before reporting done:
 
 ```nu
-nu-check config.nu                       # parse, follows every `source`
+nu-check distro.nu                       # parse, follows every `source`
 nu -l -c 'nu-config doctor'              # loads the config for real
 nu -n -c '<snippet>'                     # isolated snippet, no config
 ```
+
+`nu -n` has no `NU_LIB_DIRS`, so `nu-check` on anything that imports a module
+reports `false` there for reasons unrelated to the file. Use `nu -l -c
+'nu-check <file>'` for those.
 
 `nu -c` does NOT load the config; use `nu -l -c` to test anything in here.
 
@@ -16,20 +20,29 @@ nu -n -c '<snippet>'                     # isolated snippet, no config
 
 - Settings are leaf-key assignments (`$env.config.a.b = ...`), never whole
   records, and never `$env.config = {...}`.
-- One concern per `conf/` file; `config.nu` only wires them in order. Knobs a
-  user is expected to change live in `conf/settings.nu`.
+- **Values go in `defaults.nu`, behaviour in `conf/`.** A `conf/` file must
+  never assign a value `defaults.nu` owns: it runs after the user's
+  `settings.nu` and would silently overwrite it. One concern per `conf/` file;
+  `distro.nu` only wires them in order.
+- Nothing a user owns is written inside this checkout. State keys off
+  `$nu.data-dir`, which is the user's config dir, never the distro.
+- Modules follow `docs/modules.md`: `mod.nu` + `load.nu` + `meta.nuon` +
+  `README.md`, wiring in `activate` (defaults via `default`, never assignment),
+  knobs declared in `meta.nuon` rather than `defaults.nu`. `nu-config module
+  lint` enforces it. A lazy module is interactive-only — `pre_execution` does
+  not fire for `nu -c` or scripts.
 - Paths are parse-time constants derived from `$ROOT` (`path self`). Never a
   hard-coded home directory.
 - Optional tools are guarded with `which`; `alias` and `extern` cannot be
   inside an `if`, they are parse-time.
 - Generated files (`vendor/autoload/*.nu`), `plugin.msgpackz`, history and
-  `autoload/*` are gitignored. Change the generator in
+  `autoload/*` live in the user's config dir, not here. Change the generator in
   `modules/nu-config/tools.nu`, never the generated file.
 - Comments explain why, and state measured costs (`timeit`,
   `nu-config startup-time`), not estimates.
 - Nushell makes breaking changes at minor versions. `help <cmd>` and
   `config nu --doc` on the installed binary beat memory and web snippets.
-- OData (`modules/odata` and its README, `conf/odata.nu`): `where` cannot be
+- OData (`modules/odata` and its README): `where` cannot be
   overloaded (parser keyword), so a `pre_execution` hook plans the pushdown
   and `odata get` applies it. Test the module without touching real state:
   `nu -n` + `use modules/odata *` + `$env.ODATA_SERVICES = {…}` (the scratch

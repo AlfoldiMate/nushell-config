@@ -1,0 +1,18 @@
+{
+  description: "OData V2/V4 services (SAP Gateway included) as tables"
+  docs: "README.md"
+  # 51.6 ms to parse — the single most expensive thing this config loaded, and
+  # most shells never mention it. Lazy by default.
+  lazy: true
+  requires: []
+  knobs: {
+    ODATA_SERVICES:           { default: "{trippin, northwind}", about: "services available in every shell" }
+    ODATA_SERVICE:            { default: "trippin", about: "default service for new shells" }
+    ODATA_PUSHDOWN:           { default: true, about: "translate where/select/first into $filter/$select/$top" }
+    ODATA_PUSHDOWN_SEARCH:    { default: true, about: "translate `find` into $search (V4)" }
+    ODATA_COMPLETE_KEYS:      { default: false, about: "Tab after `odata <entity> ` fetches keys (one request)" }
+    ODATA_COMPLETE_KEYS_TOP:  { default: 50, about: "how many keys that fetch asks for" }
+    ODATA_METADATA_TTL:       { default: "7day", about: "re-fetch $metadata after this" }
+    ODATA_DEBUG:              { default: false, about: "every request and pushdown decision on stderr" }
+  }
+}

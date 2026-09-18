@@ -15,7 +15,7 @@
 # and the live shell runs the chosen line via `commandline edit --accept`,
 # so it sees your aliases and $env and lands in history. Nushell has no exit
 # hook, so a finished session is checkpointed (/agmem:checkpoint) by the next
-# shell that starts and finds its pid gone (`agent sweep`, conf/agent.nu).
+# shell that starts and finds its pid gone (`agent sweep`, modules/agent/stub.nu).
 # docs/agent.md has the design, the measurements and the knobs.
 
 # modules/agent/mod.nu → the repo, for files in it.
@@ -27,7 +27,7 @@ const ROOT = (path self | path dirname | path dirname | path dirname)
 # resolves to on macOS (~/Library/Application Support/nushell).
 def repo []: nothing -> path { $nu.config-path | path dirname }
 
-# ── Settings (conf/settings.nu), with defaults ────────────────────────────────
+# ── Settings your settings.nu, with defaults ────────────────────────────────
 
 # A knob from settings.nu, or its default. A value that came through the
 # process environment (the detached sweep, `AGENT_DEBUG=true nu`) is a
@@ -45,7 +45,7 @@ def setting [name: string, default: any]: nothing -> any {
 def model-for [verb: string]: nothing -> any { setting AGENT_MODEL {} | get -o $verb }
 def effort-for [verb: string]: nothing -> any { setting AGENT_EFFORT {} | get -o $verb }
 
-# ── State: $nu.data-dir/.state/agent (the repo on macOS, gitignored) ──────────
+# ── State: $nu.data-dir/.state/agent (your config dir, never the distro) ──────
 
 def state-dir []: nothing -> path { $nu.data-dir | path join .state agent }
 def sessions-dir []: nothing -> path { state-dir | path join sessions }
@@ -55,7 +55,7 @@ def sweep-log []: nothing -> path { state-dir | path join sweep.log }
 def session-id []: nothing -> string {
   let id = ($env.AGENT_SESSION_ID? | default "")
   if ($id | is-empty) {
-    error make {msg: "AGENT_SESSION_ID is not set", help: "conf/agent.nu sets one per shell at startup; run `agent reset` to mint one now"}
+    error make {msg: "AGENT_SESSION_ID is not set", help: "modules/agent/stub.nu sets one per shell at startup; run `agent reset` to mint one now"}
   }
   $id
 }
@@ -256,7 +256,7 @@ def footer [r: record, verb: string]: nothing -> nothing {
   let denied = ($r | get -o permission_denials | default [])
   if ($denied | is-not-empty) {
     let names = ($denied | each {|d| tool-label ($d | get -o tool_name | default '?') } | uniq | str join ", ")
-    print $"(ansi yellow)denied: ($names) — add a rule to AGENT_ALLOWED_TOOLS or change AGENT_PERMISSION_MODE \(conf/settings.nu\)(ansi reset)"
+    print $"(ansi yellow)denied: ($names) — add a rule to AGENT_ALLOWED_TOOLS or change AGENT_PERMISSION_MODE \your settings.nu\)(ansi reset)"
   }
   if ($r | get -o is_error | default false) {
     print $"(ansi red)claude reported ($r | get -o subtype | default 'an error')(ansi reset)"
@@ -379,7 +379,7 @@ export def exec [...task: string, --yes (-y), --print (-p)]: any -> any {
   }
 }
 
-# Alt+E (conf/agent.nu): the current line is the task, the proposal replaces it.
+# Alt+E (modules/agent/stub.nu): the current line is the task, the proposal replaces it.
 export def line []: nothing -> nothing {
   let buf = (commandline | str trim)
   if ($buf | is-empty) { return }
@@ -525,7 +525,7 @@ export def --env reset [--no-checkpoint]: nothing -> nothing {
 }
 
 # Checkpoint sessions whose shell is gone and that had enough turns to have
-# learned something (AGENT_CHECKPOINT_MIN_TURNS); delete the rest. conf/agent.nu runs
+# learned something (AGENT_CHECKPOINT_MIN_TURNS); delete the rest. modules/agent/stub.nu runs
 # this in a background job at every interactive startup (measured: 66 µs to
 # spawn the job; claude only runs when a stale session exists).
 export def sweep [
@@ -546,7 +546,9 @@ export def sweep [
     # checkpoint finishes regardless (verified: `nohup … &` under sh survives
     # nushell's exit, a `job spawn` child does not).
     let log = (state-dir | path join sweep-detach.log)
-    ^sh -c $"nohup '($nu.current-exe)' -l -c 'agent sweep' >'($log)' 2>&1 &"
+    # `use agent` explicitly: `nu -l -c` runs no pre_execution hook, so a lazy
+    # agent would not be in scope in the child.
+    ^sh -c $"nohup '($nu.current-exe)' -l -c 'use agent; agent sweep' >'($log)' 2>&1 &"
     return
   }
   # A claim left behind by a shell that closed mid-checkpoint is taken back after 15 minutes.
@@ -608,4 +610,17 @@ export def status []: nothing -> nothing {
   if ((sweep-log) | path exists) {
     print $"(ansi cyan_bold)sweeps(ansi reset)   (open --raw (sweep-log) | lines | last 3 | str join (char newline + '         '))"
   }
+}
+
+# ── Activation ────────────────────────────────────────────────────────────────
+# Run once the module is in scope, whether that happened at startup
+# (modules/agent/load.nu) or on the first line that said "agent".
+# The knobs are read through `setting`, which already carries their defaults,
+# so there is nothing to seed here. stub.nu holds what has to happen in every
+# shell whether or not this module is ever loaded.
+export def --env activate []: nothing -> nothing {
+  # Nothing yet: the session id, the Alt+E binding and the sweep are all in
+  # stub.nu because they must exist before the module does. Kept as the entry
+  # point so the eager and lazy paths stay identical, and so wiring added later
+  # has an obvious home.
 }

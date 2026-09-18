@@ -19,7 +19,7 @@ This is the one document for the module: what each file does, every
 command and flag, which query option each pipeline stage becomes, how a
 request is assembled, the design and what Nushell allowed, the schema
 record, the dialect differences, completion, costs, testing, extending, and
-the known limits. `conf/odata.nu` is the wiring; `conf/settings.nu` holds
+the known limits. `modules/odata (activate)` is the wiring; `your settings.nu` holds
 the knobs. Verified against Nushell 0.115.1 on 2026-09-11 with the public
 TripPin (V4, read-write) and Northwind (V2) services; every cost was
 measured with `timeit` on this machine. SAP Gateway support follows the
@@ -34,7 +34,7 @@ documented protocol and is marked where no live system has exercised it.
 | `metadata.nu` | ~225 | `$metadata` (CSDL XML, V2 or V4) → one compact schema record; `schema type-of`, `edm-short`, `edm-nu-type` |
 
 `mod.nu` imports the other two with `use … *`, and re-exports only
-`odata pushdown plan` (the hook in `conf/odata.nu` calls it). Everything
+`odata pushdown plan` (the hook in `modules/odata (activate)` calls it). Everything
 else in `pushdown.nu` and `metadata.nu` is internal.
 
 Import with the glob form. The commands are named `"odata get"`,
@@ -203,7 +203,7 @@ odata service show [name]                        the resolved entry, password an
 odata service remove <name>                      drops the entry and its cached schema
 ```
 
-Two sources are merged: `$env.ODATA_SERVICES` from `conf/settings.nu`
+Two sources are merged: `$env.ODATA_SERVICES` from `your settings.nu`
 wins over `$nu.data-dir/.state/odata/services.json`, which `service add`
 writes (gitignored). An entry has this shape; every field but `url` is
 optional:
@@ -337,7 +337,7 @@ Four facts, all verified on 2026-09-11, fix the design:
    Revisit only if a service's metadata is in the megabytes (SAP can be)
    and `from xml` is measured to hurt; the cache makes even that a one-off.
 
-**The hook** (`conf/odata.nu`) runs on every Enter. A line without the
+**The hook** (`modules/odata (activate)`) runs on every Enter. A line without the
 substring `odata` costs a `str contains`. Otherwise it calls
 `odata pushdown plan <line>` and stores the result in
 `$env.ODATA_PUSHDOWN_PLAN`.
@@ -582,14 +582,14 @@ default's type.
 | `ODATA_METADATA_TTL` | `7day` | schema cache lifetime |
 | `ODATA_DEBUG` | `false` | requests and pushdown decisions on stderr |
 
-They are assigned in `conf/settings.nu` at startup, which overrides the
+They are assigned in `your settings.nu` at startup, which overrides the
 process environment; in an interactive test, set them as typed lines.
 
 ## Costs
 
 | | |
 |---|---|
-| startup | +40 ms with `conf/odata.nu` sourced (`nu-config startup-time`); Nushell parses every `use` at startup, so the module cannot be loaded lazily, trimming it is the only lever |
+| startup | +40 ms with `modules/odata (activate)` sourced (`nu-config startup-time`); Nushell parses every `use` at startup, so the module cannot be loaded lazily, trimming it is the only lever |
 | hook per Enter, no `odata` on the line | 11 µs |
 | hook per Enter, `odata People \| where FirstName =~ Ru or LastName == Ketchum \| select UserName FirstName \| first 2` | 3-4 ms (6.5 ms before words were rebuilt from spans) |
 | translate one condition | 1-1.5 ms |
@@ -646,7 +646,7 @@ runs the stages locally on one page. To test pushdown end to end, drive
 `TIOCSWINSZ` or tables render as "Couldn't fit table into 0 columns"), type
 whole lines, then strip the escape sequences and drop every line starting
 with the prompt, because vi mode repaints the buffer on each keystroke. Set
-knobs as typed lines: `conf/settings.nu` assigns them at startup and
+knobs as typed lines: `your settings.nu` assigns them at startup and
 overrides the process environment. `ODATA_DEBUG` shows the `pushed down: …`
 line and every request.
 

@@ -19,16 +19,16 @@
 # everything Tab offers — entities, fields, navigations, enum values — comes
 # from that cache, never from the network. Row conditions typed after the
 # call (`odata People | where … | first 5`) reach the server through the
-# pre_execution hook in conf/odata.nu (pushdown.nu): where, select/get,
+# pre_execution hook in modules/odata (activate) (pushdown.nu): where, select/get,
 # sort-by, first/skip, expand, length, find → $filter, $select, $orderby,
 # $top/$skip, $expand, /$count, $search. README.md here has the design
-# and the measurements; conf/settings.nu the knobs.
+# and the measurements; your settings.nu the knobs.
 
 use metadata.nu *
 use pushdown.nu *
 export use pushdown.nu ["odata pushdown plan"]
 
-# ── Settings (conf/settings.nu), with defaults ────────────────────────────────
+# ── Settings your settings.nu, with defaults ────────────────────────────────
 
 def setting [name: string, default: any]: nothing -> any {
   let v = ($env | get -o $name)
@@ -70,8 +70,9 @@ def memo-peek [key: string, ttl: duration]: nothing -> any {
 def memo-forget [key: string]: nothing -> nothing { ensure-memo; stor delete -t $MEMO -w $"key = '($key)'" | ignore }
 
 # ── The registry ──────────────────────────────────────────────────────────────
-# Services come from $env.ODATA_SERVICES (conf/settings.nu; closures allowed
-# for secrets) merged over $nu.data-dir/.state/odata/services.json, which
+# Services come from $env.ODATA_SERVICES your settings.nu; closures allowed
+# for secrets) merged over $nu.data-dir/.state/odata/services.json in your own
+# config directory, which
 # `odata service add` writes. The current one is $env.ODATA_SERVICE.
 
 def state-dir []: nothing -> path {
@@ -1040,7 +1041,7 @@ export def "odata services" []: nothing -> table {
 
 # Register a service (persisted in .state/odata/services.json) and fetch its
 # $metadata. Auth: --user/--password (basic) or --token (bearer); keep
-# secrets in conf/settings.nu as closures instead when they matter.
+# secrets in your settings.nu as closures instead when they matter.
 export def "odata service add" [
   name: string, url: string
   --user: string, --password: string, --token: string
@@ -1142,4 +1143,53 @@ export def "odata status" []: nothing -> table {
   let memos = (stor open | query db $"select key, at from ($MEMO)" | each {|r| { what: $"memo ($r.key)", where: "stor", age: ((date now) - ($r.at | into datetime) | into string | str replace --regex ' \d+ms.*' '') } })
   let files = (ls (cache-dir) | each {|f| { what: ($f.name | path basename), where: $f.name, age: ((date now) - $f.modified | into string | str replace --regex ' \d+ms.*' '') } })
   $files ++ $memos
+}
+
+# ── Activation ────────────────────────────────────────────────────────────────
+# Everything this module needs wired into the shell, in one place, so that
+# loading it eagerly (modules/odata/load.nu) and loading it lazily on the first
+# line that says "odata" run exactly the same code. docs/modules.md.
+export def --env "odata activate" []: nothing -> nothing {
+  # Defaults. `default` rather than assignment, because your settings.nu was
+  # sourced long before this ran and must win.
+  $env.ODATA_SERVICES = ($env.ODATA_SERVICES? | default {
+    trippin: { url: "https://services.odata.org/V4/(S(nushell))/TripPinServiceRW/", description: "OData V4 sandbox, read-write" }
+    northwind: { url: "https://services.odata.org/V2/Northwind/Northwind.svc/", description: "OData V2 sample, read-only" }
+  })
+  $env.ODATA_SERVICE = ($env.ODATA_SERVICE? | default "trippin")
+  $env.ODATA_PUSHDOWN = ($env.ODATA_PUSHDOWN? | default true)
+  $env.ODATA_PUSHDOWN_SEARCH = ($env.ODATA_PUSHDOWN_SEARCH? | default true)
+  $env.ODATA_COMPLETE_KEYS = ($env.ODATA_COMPLETE_KEYS? | default false)
+  $env.ODATA_COMPLETE_KEYS_TOP = ($env.ODATA_COMPLETE_KEYS_TOP? | default 50)
+  $env.ODATA_METADATA_TTL = ($env.ODATA_METADATA_TTL? | default 7day)
+  $env.ODATA_DEBUG = ($env.ODATA_DEBUG? | default false)
+
+  # Pushdown. `where` cannot be overloaded (a parser keyword) and a hook cannot
+  # rewrite the line, but the $env a pre_execution hook sets is visible to the
+  # command that runs. So the hook leaves the plan of what follows each
+  # `odata …` call, and `odata get` sends as much of it as it can translate.
+  # Cost per Enter: a `str contains` (µs); with "odata" on the line, `ast
+  # --flatten` plus the walk (see README.md).
+  $env.config.hooks.pre_execution = ($env.config.hooks.pre_execution? | default [])
+  $env.config.hooks.pre_execution ++= [{||
+    let line = (commandline)
+    $env.ODATA_PUSHDOWN_PLAN = (if ($line | str contains "odata") { try { odata pushdown plan $line } catch { [] } } else { [] })
+  }]
+
+  # The smart Tab menu asks a provider for the columns a command returns
+  # instead of running it: `odata People | where ⌶` lists fields, typed, with
+  # enum members as values, from the cached $metadata.
+  $env.NU_COMPLETE_PROVIDERS = (($env.NU_COMPLETE_PROVIDERS? | default {}) | merge { odata: {|segment| odata complete columns $segment } })
+
+  # The hook above cannot help the line that loaded this module: when the
+  # module is lazy, that line is already mid-`pre_execution` and the closure
+  # was only just appended. Without this, the FIRST `odata … | where …` in a
+  # shell fetched the whole entity set and filtered locally — verified with
+  # ODATA_DEBUG, which showed a bare `GET /People` for line one and
+  # `?$filter=…&$select=…` only from line two.
+  #
+  # `commandline` still holds the line about to run, so the plan can be built
+  # here. Loaded eagerly at startup it returns "", and the plan is empty —
+  # which is correct, there is no line yet.
+  $env.ODATA_PUSHDOWN_PLAN = (try { odata pushdown plan (commandline) } catch { [] })
 }

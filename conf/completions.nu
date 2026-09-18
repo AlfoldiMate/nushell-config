@@ -16,7 +16,9 @@
 #   3. The Tab menu source `nu-complete smart`, the only place that sees the
 #      whole line: columns/operators/values for `ls | where ⌶`, no files after
 #      commands that take no argument, no duplicate entries.
-use nu-complete *
+# nu-complete itself is loaded by conf/modules.nu, which runs first.
+# Published for tooling; the const itself is parse-time and invisible to it.
+$env.NU_SMART_TAB = $SMART_TAB
 
 # ── Tool specs ────────────────────────────────────────────────────────────────
 # One module per tool in completions/ (on NU_LIB_DIRS). `use` is parse-time,
@@ -74,7 +76,4 @@ if $SMART_TAB {
       ]
     }
   }]
-  # The engine keeps every command's signature in stor; building that table
-  # costs ~115 ms, so a background job does it while you type the first line.
-  if $nu.is-interactive { job spawn { nu-complete warm } | ignore }
 }
