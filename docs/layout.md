@@ -42,12 +42,12 @@ lines.
 `distro.nu` sources `defaults.nu`, then your `settings.nu`, then `conf/`:
 
 ```nu
-source ($DISTRO_ROOT | path join defaults.nu)   # const THEME = "catppuccin-macchiato"
-source $USER_SETTINGS                           # const THEME = "tokyo-night"
+source ($DISTRO_ROOT | path join defaults.nu)   # const THEME = "terminal"
+source $USER_SETTINGS                           # const THEME = "catppuccin-mocha"
 ```
 
 A `const` in a later `source` **shadows** an earlier one, and a later `$env.`
-assignment overwrites an earlier one. So `$THEME` is `tokyo-night`, and
+assignment overwrites an earlier one. So `$THEME` is `catppuccin-mocha`, and
 `conf/theme.nu` — which runs afterwards and reads `$THEME` — sees your value.
 
 Two consequences worth stating plainly:

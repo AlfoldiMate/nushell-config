@@ -152,7 +152,6 @@ $env.config.color_config = {
   shape_raw_string: $scheme.string
   shape_externalarg: $scheme.string
 }
-$env.config.highlight_resolved_externals = true
 $env.config.explore = {
     status_bar_background: { fg: $theme.text, bg: $theme.mantle },
     command_bar_text: { fg: $theme.text },

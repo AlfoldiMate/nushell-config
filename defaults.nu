@@ -17,17 +17,27 @@
 # exists:  config nu --doc | nu-highlight | less -R
 
 # ── Colours ───────────────────────────────────────────────────────────────────
-# "terminal" follows the terminal's own palette: 16 ANSI colours, so a Ghostty
-# theme (`nu-config theme`) drives Nushell too and nothing is generated.
-# "dark"/"light" are the neutral themes from the standard library. Anything
-# else is a file in themes/ without its .nu, which carries its own colours:
-#   ls themes/  →  catppuccin-latte  catppuccin-frappe  catppuccin-macchiato  catppuccin-mocha
-const THEME = "catppuccin-macchiato"
+# A theme is a file in themes/ named without its .nu, and yours come first on
+# the search path, so a copy in <your dir>/themes/ overrides a shipped one:
+#   ls themes/  →  terminal  catppuccin-{latte,frappe,macchiato,mocha}
+#
+# "terminal", the default, is 16 ANSI colour names and no hex, so the terminal
+# decides what they look like: pick a theme in Ghostty and Nushell follows it,
+# with nothing generated and nothing to keep in sync. Catppuccin carries its
+# own 26-colour palette in hex instead and ignores the terminal.
+# "dark"/"light" are the neutral themes from the standard library.
+const THEME = "terminal"
 
 # vivid theme for `ls` file colours (LS_COLORS); only used when vivid is
-# installed. "ansi" follows the terminal like THEME = "terminal" does; `vivid
-# themes` lists the rest. Re-run `nu-config tools setup` after changing it.
-$env.VIVID_THEME = "catppuccin-macchiato"
+# installed. "ansi" is terminal-relative the way THEME = "terminal" is (`di=0;34`,
+# not `di=0;38;2;138;173;244`); every other vivid theme bakes truecolor.
+# `vivid themes` lists them. Re-run `nu-config tools setup` after changing it.
+$env.VIVID_THEME = "ansi"
+
+# `bat`'s syntax theme — also the colours of `help` and of git diffs through a
+# delta/bat pager. null follows THEME: "ansi" for a terminal-relative theme,
+# the matching flavour for catppuccin-*. `bat --list-themes` lists the rest.
+const BAT_THEME = null
 
 # ── Editor ────────────────────────────────────────────────────────────────────
 # Candidates in order; the first one found on PATH becomes $env.EDITOR,
@@ -42,6 +52,13 @@ const EDITORS = [
 # ── Line editing ──────────────────────────────────────────────────────────────
 # emacs | vi | helix
 $env.config.edit_mode = "vi"
+
+# Paint an external command differently once it resolves on PATH, so a typo is
+# visible before you press Enter (shape_external vs shape_external_resolved).
+# Nushell ships this false: the highlighter looks the word up on PATH as you
+# type. It used to be set by each of the four Catppuccin theme files, which is
+# the wrong place — a theme runs after your settings.nu and would overwrite you.
+$env.config.highlight_resolved_externals = true
 
 # How the cursor looks per mode; it is how you see which vi mode you are in.
 $env.config.cursor_shape.emacs = "line"

@@ -1,8 +1,11 @@
-# theme.nu — colours. Pick the theme in settings.nu (THEME).
+# theme.nu — colours. Pick the theme in settings.nu (THEME, BAT_THEME).
 #
-# Files in themes/ are "source style": each assigns $env.config.color_config
-# (Catppuccin also sets the `explore` colours). "dark" and "light" use the
-# neutral themes from the standard library instead of a file.
+# A theme is a file in themes/ in "source style": it assigns
+# $env.config.color_config, and nothing else — a theme must not set behaviour,
+# because this file runs after your settings.nu and would overwrite you.
+# The default, themes/terminal.nu, is all ANSI names, so the terminal's own
+# palette is the theme. Catppuccin brings hex and also sets `explore`.
+# "dark" and "light" are the standard library's themes, with no file.
 
 const THEME_FILE = if $THEME in ["dark" "light"] { null } else { $"($THEME).nu" }
 source $THEME_FILE     # `source null` is a no-op; a bare name resolves through NU_LIB_DIRS
@@ -15,10 +18,16 @@ if $THEME == "dark" {
   $env.config.color_config = (light-theme)
 }
 
-# bat follows the Catppuccin flavour.
-if ($THEME | str starts-with "catppuccin-") {
-  $env.BAT_THEME = $"Catppuccin ($THEME | str replace 'catppuccin-' '' | str capitalize)"
-}
+# bat: the BAT_THEME knob wins, otherwise follow THEME. bat ships an `ansi`
+# theme that is terminal-relative exactly like themes/terminal.nu, and a
+# Catppuccin flavour for each of ours.
+$env.BAT_THEME = $BAT_THEME | default (
+  if ($THEME | str starts-with "catppuccin-") {
+    $"Catppuccin ($THEME | str replace 'catppuccin-' '' | str capitalize)"
+  } else {
+    "ansi"
+  }
+)
 
 # `ls` file colours (LS_COLORS) come from vivid, baked into a generated file by
 # `nu-config tools setup`; without vivid Nushell's built-in default applies.
