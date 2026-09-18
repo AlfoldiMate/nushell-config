@@ -3,6 +3,7 @@
 #   theme              pick one of Ghostty's 463 themes, the terminal as preview
 #   ghostty status     what this distro has written into Ghostty's config
 #   terminal list      the terminals this distro knows: installed, running, how to get one
+#   font               pick a Nerd Font, install it, and let a new window render it
 #
 # The two belong together because of how this distro does colour: THEME =
 # "terminal" makes Nushell's theme the terminal's own sixteen ANSI colours, so
@@ -18,6 +19,7 @@
 export use ghostty.nu *
 export use theme.nu *
 export use detect.nu *
+export use font.nu *
 
 # Nothing to wire: no hooks, no completion providers, no knobs. The contract
 # (docs/modules.md) wants an `activate` and this is the honest one — both files

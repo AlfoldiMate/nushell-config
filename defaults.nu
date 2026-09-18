@@ -157,6 +157,6 @@ const MODULES_LAZY = [terminal agent odata]
 # Extra words that should also trigger a lazy module, beyond its own name.
 # `odata`'s `expand` is a pipeline stage that does not repeat the module name;
 # most of `terminal` is not called "terminal" — `terminal list` is, but the rest
-# of its commands start with `theme` or `ghostty`, which is also why typing
-# `ghostty +list-themes` loads it.
-const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty] }
+# of its commands start with `theme`, `ghostty` or `font`, which is also why
+# typing `ghostty +list-themes` loads it.
+const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty font] }
