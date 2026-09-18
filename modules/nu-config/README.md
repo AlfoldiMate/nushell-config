@@ -18,7 +18,7 @@ nu-config module list       # what is enabled, lazy, loaded
 | `module list \| info \| check \| enable \| disable \| lint` | the module system — `docs/modules.md` |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
 | `plugins list \| add` | the plugin registry |
-| `fetch completion \| theme <name>` | vendor one from nu_scripts **into your directory**, never the distro |
+| `fetch completion <tool>` | vendor one from nu_scripts **into your directory**, never the distro |
 | `startup-time [n]` | time N cold interactive starts |
 | `loaded-files` | what was parsed this session — find a slow import |
 | `edit` / `edit user` | open the distro / your `settings.nu` |

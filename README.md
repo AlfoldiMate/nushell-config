@@ -70,7 +70,7 @@ committed.
 | Add an alias or small command | `conf/aliases.nu` |
 | Add a module | `modules/<name>.nu` or `modules/<name>/mod.nu`, then `use <name>` in `config.nu` |
 | Add completions for a tool | `agent completion <tool>` builds, wires and verifies `completions/<tool>.nu`; by hand: a spec (see `docs/completion.md`) or `nu-config fetch completion <tool>`, then a `use` line in `conf/completions.nu` |
-| Add a theme | `nu-config fetch theme <name>`, then `THEME` in `conf/settings.nu` |
+| Add a theme | `THEME = "terminal"` (the default) follows your terminal's own colours, so theme Ghostty; for a theme of your own, drop a file in your `themes/` and name it in `THEME` |
 | Wire up a tool that emits a Nushell init file | append it to the registry in `modules/nu-config/tools.nu`, run `nu-config tools setup` |
 | Wire up a tool that does not | `conf/tools.nu`, guarded with `which` |
 | Add a plugin | `plugin add <path>` (resolves through `NU_PLUGIN_DIRS`), restart |

@@ -5,7 +5,6 @@
 #   nu-config tools setup         generate init files for installed tools (zoxide, atuin, ...)
 #   nu-config plugins add         register the plugins shipped next to `nu`
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
-#   nu-config fetch theme X       vendor a theme into YOUR directory
 #   nu-config startup-time        time cold starts
 #   nu-config edit                open the distro in $EDITOR
 #   nu-config edit user           open your own settings.nu
@@ -269,26 +268,6 @@ export def "fetch completion" [tool: string]: nothing -> nothing {
   $body | save -f $dest
   print $"saved ($dest)"
   print $"add to your settings.nu:   use ($tool)-completions.nu *"
-}
-
-# Vendor a theme from nu_scripts into YOUR themes/, wrapped so it applies
-# itself when sourced (nu_scripts themes are modules that only return colours).
-#   nu-config fetch theme tokyo-night   →   const THEME = "tokyo-night" in your settings.nu
-export def "fetch theme" [name: string]: nothing -> nothing {
-  let url = $"($NU_SCRIPTS)/themes/nu-themes/($name).nu"
-  let dest = (user-dir themes | path join $"($name).nu")
-  let body = (try { http get $url } catch { error make { msg: $"nothing at ($url)" } })
-  [
-    $"# ($name) — from ($url)"
-    $"module ($name) {"
-    $body
-    "}"
-    $"use ($name)"
-    $"$env.config.color_config = \(($name)\)"
-    ""
-  ] | str join (char nl) | save -f $dest
-  print $"saved ($dest)"
-  print $"set in your settings.nu:   const THEME = \"($name)\""
 }
 
 def editor-argv []: nothing -> list<string> {

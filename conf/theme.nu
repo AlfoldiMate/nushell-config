@@ -33,6 +33,12 @@ $env.BAT_THEME = $BAT_THEME | default (
 # `nu-config tools setup`; without vivid Nushell's built-in default applies.
 
 # Try another theme in the running session without editing anything:
+#   source terminal.nu
 #   source catppuccin-latte.nu
 #   use std/config light-theme; $env.config.color_config = (light-theme)
-# More: https://github.com/nushell/nu_scripts/tree/main/themes  →  nu-config fetch theme <name>
+#
+# To add a theme of your own, drop a file that assigns $env.config.color_config
+# into <your dir>/themes/ and name it in THEME; themes/terminal.nu is the
+# smallest example to copy. Nothing is fetched at runtime — the distro used to
+# have `nu-config fetch theme`, and a theme downloaded onto a live machine is
+# exactly the kind of state this layout keeps out of the config directory.
