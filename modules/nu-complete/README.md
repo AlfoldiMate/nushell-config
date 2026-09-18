@@ -56,7 +56,8 @@ contract for a tool spec.
 ## Measured
 
 Eager by design: it owns the Tab menu, which has to answer on the first
-keystroke of the first line, so it cannot be lazy. 8.6 ms to parse. Building
+keystroke of the first line, so it cannot be lazy. 2 ms to load — the specs it
+runs are parsed by `conf/completions.nu` and are not part of that. Building
 the signature table costs ~115 ms, which is why `activate` hands it to a
 background job instead of blocking startup.
 

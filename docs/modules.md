@@ -62,8 +62,9 @@ triggered it. (nushell 0.115.1: `repl.rs:400` for the ordering,
 `hook.rs:126-144` for the `merge_delta`. Confirmed in a live REPL.)
 
 Measured: the guard costs **828 ns** per Enter on a line that matches nothing.
-Making `odata` (51.6 ms) and `agent` (13 ms) lazy took startup from **161 ms to
-73 ms**.
+Making `odata` and `agent` lazy took startup from **161 ms to 73 ms** when it was
+done; on the same machine today the shipped set starts in **79 ms**, and loading
+all three lazy modules eagerly would add **133 ms** of it (see Cost, below).
 
 **The limit, and it is inherent:** `pre_execution` never fires for `nu -c` or a
 script, so a lazy module is interactive-only. A script must `use odata *`
@@ -88,6 +89,23 @@ requires: [
 `hard: false` means the module works without it, worse. `nu-config module check
 <name>` reports; `nu-config doctor` flags a missing hard dependency. Nothing
 here ever runs an installer.
+
+## Cost
+
+`meta.nuon` declares what the module costs, as a duration:
+
+```nu
+cost: 18ms
+```
+
+One method for all of them, so the numbers can be compared: the median of 25
+cold `nu -l` startups with the module loaded, against the same 25 with it lazy
+or absent, from the shipped default set. `nu-config startup-time` is the same
+measurement on your own machine, and the number is a property of the machine as
+much as of the module — what it is for is deciding whether to make something
+lazy, and telling the installer what a checkbox costs.
+
+A lazy module's cost is paid on the first line that mentions it, not at startup.
 
 An optional `paths: [...]` is consulted when PATH misses — a GUI application is
 installed without being on PATH. Ghostty on macOS is the case that forced it:

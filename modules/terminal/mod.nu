@@ -12,9 +12,9 @@
 # choosing and the painting, ghostty.nu is the writing, and detect.nu answers
 # the two questions the installer asks first: is it installed, and are we in it.
 #
-# Lazy, and measured: parsing these files costs 10 ms of every shell start
-# (95 ms against 87 ms, medians of 15 cold starts), for commands a shell uses
-# once in a while. So `theme` and `ghostty` are trigger words — see meta.nuon.
+# Lazy, and measured: loading these files costs 18 ms (meta.nuon carries the
+# number and docs/modules.md the method), for commands a shell uses once in a
+# while. So `theme`, `ghostty` and `font` are trigger words — see meta.nuon.
 
 export use ghostty.nu *
 export use theme.nu *

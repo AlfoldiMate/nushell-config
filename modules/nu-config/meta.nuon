@@ -1,6 +1,8 @@
 {
   description: "Maintenance commands for this configuration"
   docs: "../../docs/layout.md"
+  # nu-config, with nu-complete which it imports
+  cost: 14ms
   # Eager and not optional: it is how you inspect and repair everything else.
   lazy: false
   requires: []

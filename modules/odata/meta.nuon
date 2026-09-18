@@ -1,7 +1,9 @@
 {
   description: "OData V2/V4 services (SAP Gateway included) as tables"
   docs: "README.md"
-  # 51.6 ms to parse — the single most expensive thing this config loaded, and
+  # paid on the first `odata` or `expand`, not at startup
+  cost: 97ms
+  # 97 ms to load — the single most expensive thing this config loads, and
   # most shells never mention it. Lazy by default.
   lazy: true
   requires: []

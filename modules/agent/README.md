@@ -158,7 +158,7 @@ $env.AGENT_CONFIRM ++= ['\bdocker\b.*\b(rm|prune)\b']
 ```
 modules/agent/mod.nu        the commands, and `agent activate`
 modules/agent/stub.nu       session id, startup sweep, Alt+E — loaded in every
-                            shell, so the 13 ms body need not be
+                            shell, so the 18 ms body need not be
 modules/agent/load.nu       `use agent` + activate; sourced eagerly or by the
                             lazy hook, so both paths run the same file
 modules/agent/meta.nuon     description, dependencies, knobs

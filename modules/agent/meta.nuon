@@ -1,7 +1,9 @@
 {
   description: "Claude Code in the shell: agent ask | exec | skill | command"
   docs: "README.md"
-  # 13 ms to parse. stub.nu keeps the session id, the Alt+E binding and the
+  # paid on the first `agent`, not at startup
+  cost: 18ms
+  # stub.nu keeps the session id, the Alt+E binding and the
   # checkpoint sweep alive in every shell without loading the body.
   lazy: true
   requires: [

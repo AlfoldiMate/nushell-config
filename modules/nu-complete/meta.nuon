@@ -1,8 +1,10 @@
 {
   description: "The completion engine behind Tab: pipeline-aware, spec-driven"
   docs: "../../docs/completion.md"
+  # the engine itself; the specs it runs live in conf/completions.nu
+  cost: 2ms
   # Eager by design: it owns the Tab menu, which must answer on the very first
-  # keystroke of the first line. 8.6 ms.
+  # keystroke of the first line.
   lazy: false
   requires: [
     { bin: "carapace", hard: false, why: "answers any slot a spec has no opinion on",

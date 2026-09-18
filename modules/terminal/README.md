@@ -206,8 +206,8 @@ Ghostty reads it as long as Application Support holds nothing.
 
 ### Why it is lazy
 
-Parsing these files costs 10 ms of every shell start, for commands a shell
-uses once in a while, so `theme` and `ghostty` are trigger words
+Loading these files costs 18 ms, for commands a shell uses once in a while,
+so `theme`, `ghostty` and `font` are trigger words
 (`MODULES_TRIGGERS` in `defaults.nu`). Typing `ghostty +list-themes` loads the
 module too, which is harmless.
 
@@ -217,7 +217,7 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 
 | What | Cost |
 |---|---|
-| startup with the module lazy | 87 ms, against 95 ms when it was parsed eagerly (medians of 15 cold starts) |
+| the module, loaded | 18 ms — 97.4 ms of startup with it eager against 79.0 ms with it lazy, medians of 25 cold starts |
 | parsing the module | 4.6 ms — `nu -n -c 'use terminal *'` at 26.1 ms against a 21.5 ms empty run, medians of 15. `detect.nu` is 0.9 ms of it |
 | `theme list` | 31 ms — it spawns `ghostty +list-themes` |
 | `theme list --swatches` | 333 ms, reading all 463 theme files |

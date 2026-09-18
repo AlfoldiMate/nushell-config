@@ -29,7 +29,7 @@ source $M_COMPLETE
 
 # ── agent ─────────────────────────────────────────────────────────────────────
 # stub.nu is unconditional while the module is enabled: it mints the session
-# id and binds Alt+E without parsing the 13 ms body.
+# id and binds Alt+E without parsing the 18 ms body.
 const M_AGENT_STUB = (if ("agent" in $MODULES) { ($MOD_DIR | path join agent stub.nu) } else { null })
 source $M_AGENT_STUB
 const M_AGENT = (if ("agent" in $MODULES) and ("agent" not-in $MODULES_LAZY) { ($MOD_DIR | path join agent load.nu) } else { null })

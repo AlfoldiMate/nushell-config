@@ -2,7 +2,7 @@
 #
 # Sourced unconditionally by conf/modules.nu, before any decision about
 # laziness. It must stay free of `use agent`: the whole point is that the
-# 13 ms module body is not parsed in a shell that never mentions it.
+# 18 ms module body is not parsed in a shell that never mentions it.
 
 # One Claude Code session per shell. Minted here so every verb, and a
 # `nu -l -c 'use agent; agent ask ...'`, has a session to attach to; the

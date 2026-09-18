@@ -147,7 +147,7 @@ const MODULES = [nu-config nu-complete terminal agent odata]
 
 # Of those, the ones NOT parsed at startup. A lazy module is loaded by a
 # pre_execution hook on the first line that mentions it — measured at 828 ns
-# per Enter to check, against 13 ms (agent) and 51.6 ms (odata) to parse.
+# per Enter to check, against 18 ms (agent) and 97 ms (odata) to load.
 #
 # The catch, and it is inherent: pre_execution does not fire for `nu -c` or a
 # script, so a lazy module is interactive-only and a script has to say

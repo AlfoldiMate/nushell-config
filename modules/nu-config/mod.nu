@@ -151,7 +151,8 @@ export def doctor []: nothing -> nothing {
   for m in (mod-list) {
     let mark = (if not $m.enabled { $"(ansi dark_gray)--(ansi reset)" } else if $m.loaded { $ok } else { $"(ansi cyan)zz(ansi reset)" })
     let how = (if not $m.enabled { "disabled" } else if $m.lazy { (if $m.loaded { "lazy, loaded" } else { "lazy, not yet loaded" }) } else { "eager" })
-    print $"  ($mark) ($m.module | fill --width 12) ($how | fill --width 22) ($m.deps)"
+    let cost = (if $m.cost == 0ns { "" } else { $m.cost | into string })
+    print $"  ($mark) ($m.module | fill --width 12) ($how | fill --width 22) ($cost | fill --width 7) ($m.deps)"
   }
   let broken = (mod-list | where enabled and deps =~ 'missing')
   if ($broken | is-not-empty) {
@@ -356,6 +357,7 @@ def mod-list []: nothing -> table {
       # one was loaded at startup if it is enabled at all.
       loaded: (if ($meta.lazy? | default false) { $m.name in ($env.NU_MODULES_LOADED? | default []) } else { $enabled })
       deps: (if ($deps | is-empty) { "—" } else { $deps | each {|d| $"($d.bin):($d.state)" } | str join " " })
+      cost: ($meta.cost? | default 0ns)
       description: ($meta.description? | default "")
     }
   }
@@ -374,6 +376,7 @@ def mod-info [name: string]: nothing -> record {
     from: $dir.source
     description: ($meta.description? | default "")
     lazy: ($meta.lazy? | default false)
+    cost: ($meta.cost? | default 0ns)
     requires: ($meta.requires? | default [] | each {|d| dep-state $d })
     knobs: ($meta.knobs? | default {})
     docs: (if ($meta.docs? | default "" | is-empty) { "" } else { $dir.path | path join $meta.docs | path expand })
@@ -470,6 +473,11 @@ export def "module disable" [name: string@module-names]: nothing -> nothing {
 #
 # A contract nothing checks drifts the first time one is added in a hurry,
 # and a module that half-conforms fails in ways that look like Nushell bugs.
+#
+# The parse check is here because nothing else covers a LAZY module: `nu-check
+# distro.nu` follows `source`, and a lazy module is sourced by a hook string at
+# runtime, so a syntax error in it survives every startup and surfaces only when
+# someone finally types its name. That is exactly how `agent` shipped broken.
 export def "module lint" []: nothing -> table<module: string, problem: string> {
   module-dirs | each {|m|
     let meta_file = ($m.path | path join meta.nuon)
@@ -479,9 +487,11 @@ export def "module lint" []: nothing -> table<module: string, problem: string> {
       (if not ($meta_file | path exists) { "no meta.nuon" })
       (if ($meta_file | path exists) and ($meta | is-empty) { "meta.nuon does not parse" })
       (if ($meta.description? | default "" | is-empty) { "meta.nuon has no description" })
+      (if ($meta.cost? | default 0ns) == 0ns { "meta.nuon has no measured cost" })
       (if not (($m.path | path join mod.nu) | path exists) { "no mod.nu" })
       (if not (($m.path | path join load.nu) | path exists) { "no load.nu — conf/modules.nu has nothing to source" })
       (if not (($m.path | path join README.md) | path exists) { "no README.md" })
+      (if ((($m.path | path join load.nu) | path exists) and not ((do -i { nu-check ($m.path | path join load.nu) } | default false))) { "load.nu does not parse — the module would fail on first use" })
       ($meta.requires? | default [] | each {|d|
           if ($d.bin? | default "" | is-empty) { "a requires entry has no bin" } else if ($d.why? | default "" | is-empty) { $"requires ($d.bin) has no why" } else if (["macos" "linux" "windows"] | any {|o| ($d.install? | get -o $o | default "" | is-empty) }) { $"requires ($d.bin) is missing an install line for some platform" } else { null }
         } | compact)

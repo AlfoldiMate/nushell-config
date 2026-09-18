@@ -256,7 +256,7 @@ def footer [r: record, verb: string]: nothing -> nothing {
   let denied = ($r | get -o permission_denials | default [])
   if ($denied | is-not-empty) {
     let names = ($denied | each {|d| tool-label ($d | get -o tool_name | default '?') } | uniq | str join ", ")
-    print $"(ansi yellow)denied: ($names) — add a rule to AGENT_ALLOWED_TOOLS or change AGENT_PERMISSION_MODE \your settings.nu\)(ansi reset)"
+    print $"(ansi yellow)denied: ($names) — add a rule to AGENT_ALLOWED_TOOLS or change AGENT_PERMISSION_MODE \(your settings.nu\)(ansi reset)"
   }
   if ($r | get -o is_error | default false) {
     print $"(ansi red)claude reported ($r | get -o subtype | default 'an error')(ansi reset)"

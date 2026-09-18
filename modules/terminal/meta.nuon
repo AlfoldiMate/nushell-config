@@ -1,9 +1,10 @@
 {
   description: "The terminal itself: which one you have (`terminal`), its theme (`theme`), its configuration (`ghostty`)"
   docs: "README.md"
-  # 10 ms to parse, for commands a shell uses once in a while: 95 ms of startup
-  # against 87 ms without, medians of 15 cold starts. Lazy, on `theme` or
-  # `ghostty` (MODULES_TRIGGERS) — the words its commands start with.
+  # paid on the first `theme`, `ghostty` or `font`, not at startup
+  cost: 18ms
+  # For commands a shell uses once in a while, so lazy: on `theme`, `ghostty` or
+  # `font` (MODULES_TRIGGERS) — the words its commands start with.
   lazy: true
   requires: [
     {
