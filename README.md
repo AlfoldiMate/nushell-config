@@ -33,6 +33,10 @@ install or Nushell upgrade, and `--dry-run` prints the plan without touching
 anything. Nothing you own is ever written inside the checkout — `docs/layout.md`
 explains why that is the whole design.
 
+Verified on macOS, Linux and Windows by CI on every push — it installs the
+config and loads it for real on all three. `docs/layout.md` says exactly which
+parts of that are only exercised on macOS.
+
 ## Layout
 
 ```

@@ -1,0 +1,89 @@
+# ci — prove the claim "macOS, Linux and Windows" on all three, every push.
+#
+# The distro is a live shell configuration: a parse error breaks every new
+# terminal, and it breaks it on whichever platform was not the one it was
+# written on. So the matrix runs the real installer and then loads the config
+# for real — `nu -c` deliberately loads no config and would prove nothing.
+#
+# What this does NOT cover, and it is most of the interesting part: Ghostty is
+# not installed on any runner, so the theme picker, the font installer and the
+# terminal registry are exercised only to the point of reporting "not
+# installed". docs/layout.md says which platforms those have actually been run
+# on. A green matrix here means the configuration parses, installs and loads.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    # Git Bash on the Windows runner, so the same quoting works everywhere.
+    shell: bash
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hustcer/setup-nu@v3
+        with:
+          # The version this distro is verified against. Nushell makes breaking
+          # changes at minor versions, so this is pinned deliberately: when it
+          # is raised, the config is what has to be checked, not the pin.
+          version: '0.115.1'
+
+      - name: nu is here
+        run: nu --version
+
+      # install.nu takes every default by itself when there is no terminal on
+      # stdin and stdout, so --defaults is belt and braces. Plugins are skipped:
+      # the runner's nu has no plugin binaries beside it to register.
+      - name: install
+        run: nu install.nu --defaults --skip-plugins
+
+      - name: the split happened
+        run: |
+          nu -l -c 'let s = (nu-config install-status); print $s; if $s.state != "split" { error make { msg: $"layout is ($s.state), not split" } }'
+
+      - name: parse
+        run: |
+          nu -l -c 'if (nu-check distro.nu) { print "distro.nu and everything it sources parse" } else { error make { msg: "distro.nu does not parse" } }'
+
+      # The one check that covers a LAZY module: nothing else parses them,
+      # because they are sourced by a runtime hook rather than by `source`.
+      - name: module contract
+        run: |
+          nu -l -c 'let p = (nu-config module lint); print $p; if ($p | is-not-empty) { error make { msg: "module lint failed" } }'
+
+      - name: doctor
+        run: nu -l -c 'nu-config doctor'
+
+      # A default install must leave no override behind; that is the test that
+      # the defaults/settings layering works, and it is cheap to keep honest.
+      - name: no overrides after a default install
+        run: |
+          nu -l -c 'let k = (nu-config knobs --overridden); print $k; if ($k | is-not-empty) { error make { msg: "a default install wrote overrides" } }'
+
+      - name: bootstrap/install.sh parses
+        run: sh -n bootstrap/install.sh
+
+      - name: bootstrap/install.ps1 parses
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path bootstrap/install.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
+          Write-Host "install.ps1 parses"
