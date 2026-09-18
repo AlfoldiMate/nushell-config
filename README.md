@@ -5,17 +5,33 @@ intends: defaults stay inside the binary, only overrides are written down, one
 concern per file, every path derived from the repo's own location. Clone it
 anywhere, run one script, done. Verified on Nushell **0.115**.
 
-```
-git clone https://github.com/AlfoldiMate/nushell-config ~/.config/nushell
-nu ~/.config/nushell/install.nu
+```sh
+# macOS, Linux
+curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.sh | sh
 ```
 
-`install.nu` links Nushell's config directory to the checkout (macOS, Windows;
-Linux needs no link when cloned to `~/.config/nushell`), generates the init
-files for whichever tools are installed, registers the plugins that ship with
-`nu`, and is safe to re-run after every `git pull`, tool install or Nushell
-upgrade. An existing config directory is renamed, never deleted, and its
-history is carried over.
+```powershell
+# Windows
+irm https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.ps1 | iex
+```
+
+Those two scripts have exactly two jobs — make sure `nu` exists, and clone this
+repo — and then hand over to `install.nu`, which is the installer proper and is
+written in the shell it installs. Read either one before running it; they are
+short on purpose. Already have Nushell and a checkout? Skip them:
+
+```nu
+git clone https://github.com/AlfoldiMate/nushell-config ~/.local/share/nushell-distro
+nu ~/.local/share/nushell-distro/install.nu
+```
+
+`install.nu` writes a three-line `config.nu` into Nushell's own config
+directory pointing at the checkout, gives you a `settings.nu` of your own,
+generates the init files for whichever tools are installed and registers the
+plugins that ship with `nu`. It is safe to re-run after every `git pull`, tool
+install or Nushell upgrade, and `--dry-run` prints the plan without touching
+anything. Nothing you own is ever written inside the checkout — `docs/layout.md`
+explains why that is the whole design.
 
 ## Layout
 
@@ -186,12 +202,21 @@ nu-check config.nu               # parse only, follows every `source`
 ## How Nushell finds this repo
 
 Nushell derives every path it uses (autoload dirs, plugin registry, history)
-from its config directory, so redirecting that one directory is enough.
-`install.nu` does it with a symlink from the platform default
-(`~/Library/Application Support/nushell`, `%APPDATA%\nushell`) to the
-checkout; on Linux the default already is `~/.config/nushell`. Alternatives
-that were rejected: `XDG_CONFIG_HOME` (shared with every other app, must be set
-before `nu` starts), `nu --config` (only redirects two files, must be repeated
-at every launch site).
+from its config directory, so the only thing that has to point here is the
+`config.nu` in that directory — three lines, written by `install.nu`:
 
-Undo at any time: remove the link and rename the backup directory back.
+```nu
+const DISTRO = "/home/you/.local/share/nushell-distro"
+source ($DISTRO | path join distro.nu)
+```
+
+The checkout stays outside the config directory, which is what keeps `git
+pull` clean and keeps history, `plugin.msgpackz` and generated files out of
+version control. `docs/layout.md` has the reasoning and the load order.
+Alternatives that were rejected: symlinking the config directory at the
+checkout (user state lands in the repo), `XDG_CONFIG_HOME` (shared with every
+other app, must be set before `nu` starts), `nu --config` (only redirects two
+files, must be repeated at every launch site).
+
+Undo at any time: delete that `config.nu` and delete the checkout. Nothing
+else in your config directory belongs to the distro.
