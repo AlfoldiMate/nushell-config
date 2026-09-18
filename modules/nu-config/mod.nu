@@ -3,6 +3,7 @@
 #   nu-config doctor              health check: roots, tools, plugins, parse
 #   nu-config knobs               every knob, its shipped default, and your value
 #   nu-config tools setup         generate init files for installed tools (zoxide, atuin, ...)
+#   nu-config ghostty status      what the distro wrote into Ghostty's config (set | reset)
 #   nu-config plugins add         register the plugins shipped next to `nu`
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
 #   nu-config startup-time        time cold starts
@@ -13,6 +14,8 @@
 
 # Tool init files: `nu-config tools setup | status | remove | dir`
 export use tools.nu *
+# The terminal's own configuration: `nu-config ghostty status | set | reset`
+export use ghostty.nu *
 # Completion caches, for `doctor`.
 use nu-complete *
 

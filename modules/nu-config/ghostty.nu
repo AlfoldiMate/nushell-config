@@ -1,0 +1,197 @@
+# ghostty — one appended line in the user's config, and one file the distro owns
+#
+# With THEME = "terminal" the terminal's 16 ANSI colours ARE the Nushell theme,
+# so choosing a theme means setting Ghostty's. That is done without ever
+# rewriting the user's own config:
+#
+#   <ghostty dir>/nushell-distro.ghostty    ours, rewritten freely
+#   config-file = ?nushell-distro.ghostty   one line appended to theirs, once
+#
+# Removing that one line undoes everything, `git diff` of a dotfiles repo shows
+# exactly what changed, and the user's config is backed up before the append.
+#
+# Verified against Ghostty 1.3.1 with XDG_CONFIG_HOME pointed at a scratch
+# directory, so nothing real was touched:
+#
+#   * An included file wins over the file that includes it no matter WHERE the
+#     `config-file` line sits — "configuration files do not take effect until
+#     after the entire configuration is loaded". Appending is therefore enough:
+#     we never have to find the user's own `theme =` line, let alone edit it.
+#   * The `?` prefix makes a missing include a silent no-op, so deleting our
+#     file is a complete uninstall even with the line still in place.
+#   * A relative path resolves next to the file holding the directive.
+#   * `config.ghostty` wins over `config` in the same directory, and only one of
+#     the two is loaded.
+#
+# Ghostty has no `+reload` CLI action — `reload_config` exists only as a keybind
+# action (`ghostty +list-actions`) — so a write here reaches new windows only.
+# The running window is repainted with OSC instead; see `nu-config theme`.
+
+# Our file, and the line that pulls it in. Relative, so it resolves next to
+# whichever config Ghostty reads.
+const OURS = "nushell-distro.ghostty"
+const INCLUDE = "config-file = ?nushell-distro.ghostty"
+const MARK = "# Added by `nu-config`; `nu-config ghostty reset` removes it again."
+
+# The XDG config dir, which every platform has and dotfiles repos manage.
+def xdg-dir []: nothing -> path {
+  $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join ".config") | path join ghostty
+}
+
+# Every path Ghostty would look at, highest priority first. On macOS it reads
+# Application Support as well as XDG; elsewhere only XDG. Within a directory
+# `config.ghostty` beats the legacy `config`, and only one of the two is loaded.
+def candidates []: nothing -> list<path> {
+  let dirs = if $nu.os-info.name == "macos" {
+    [($nu.home-dir | path join Library "Application Support" com.mitchellh.ghostty) (xdg-dir)]
+  } else {
+    [(xdg-dir)]
+  }
+  $dirs | each {|d| [($d | path join config.ghostty) ($d | path join config)] } | flatten
+}
+
+# The config Ghostty is reading: the first candidate that exists and is not
+# empty, which is Ghostty's own rule. When there is none we write the XDG one
+# even on macOS, where `ghostty +edit-config` would have picked Application
+# Support: a file under ~/.config is the one a dotfiles repo can keep, and
+# Ghostty reads it as long as Application Support holds nothing. If that ever
+# stops being true, `ghostty status` says so — it asks Ghostty for the theme it
+# actually ended up with.
+export def "ghostty config-path" []: nothing -> path {
+  let found = (candidates | where {|p| ($p | path exists) and (($p | path type) == file) and ((ls -l $p | get 0.size) > 0b) })
+  if ($found | is-empty) { xdg-dir | path join config.ghostty } else { $found | first }
+}
+
+def ours-path []: nothing -> path {
+  ghostty config-path | path dirname | path join $OURS
+}
+
+# The settings the distro currently owns. Our file is ours alone, so parsing it
+# as `key = value` lines is safe — there is nothing else in it.
+export def "ghostty settings" []: nothing -> record {
+  let f = (ours-path)
+  if not ($f | path exists) { return {} }
+  open $f
+  | lines
+  | each {|l| $l | str trim }
+  | where {|l| ($l | is-not-empty) and not ($l | str starts-with "#") }
+  | parse -r '^(?<key>[a-z0-9-]+)\s*=\s*(?<value>.*)$'
+  | reduce -f {} {|it, acc| $acc | upsert $it.key ($it.value | str trim) }
+}
+
+# Write settings into our file and make sure the user's config includes it.
+# A null value drops the key. Nothing else in their config is read or changed.
+export def "ghostty set" [
+  settings: record   # e.g. { theme: "TokyoNight Storm" } — null removes a key
+]: nothing -> nothing {
+  let merged = (ghostty settings | merge $settings | transpose key value | where value != null)
+  let body = ([
+    "# Written by `nu-config`. The Nushell distro owns this file and rewrites it"
+    "# whole, so put your own settings in your Ghostty config, not here — it is"
+    "# included from there, and an included file is applied last, so only the"
+    "# keys below are taken out of your hands. `nu-config ghostty reset` undoes"
+    "# the whole arrangement."
+    ""
+  ] ++ ($merged | sort-by key | each {|s| $"($s.key) = ($s.value)" }) ++ [""])
+  let f = (ours-path)
+  let before = (if ($f | path exists) { open --raw $f } else { null })
+  mkdir ($f | path dirname)
+  $body | str join (char nl) | save -f $f
+  link
+
+  # Ghostty is the judge of its own configuration, and it will tell us: an
+  # unknown key or a theme it cannot find fails `+validate-config`. Put the file
+  # back the way it was rather than leaving a broken include behind.
+  let check = (validate)
+  if not $check.ok {
+    if $before == null { rm $f } else { $before | save -f $f }
+    error make { msg: "Ghostty rejected that configuration", label: { text: $check.err, span: (metadata $settings).span } }
+  }
+}
+
+# Remove everything the distro put in Ghostty's configuration: our file, and
+# the one line that includes it. The backup of their config is left in place.
+export def "ghostty reset" []: nothing -> nothing {
+  let cfg = (ghostty config-path)
+  let f = (ours-path)
+  if ($f | path exists) { rm $f; print $"removed ($f)" }
+  if ($cfg | path exists) and (includes? $cfg) {
+    # Both lines we added, and any blank tail they leave behind.
+    open $cfg
+    | lines
+    | where {|l| ($l | str trim) not-in [$INCLUDE $MARK] }
+    | reverse | skip until {|l| ($l | str trim) | is-not-empty } | reverse
+    | append ""
+    | str join (char nl)
+    | save -f $cfg
+    print $"removed the include line from ($cfg)"
+  }
+  print "restart Ghostty, or open a new window, to see its own configuration again"
+}
+
+# Where things stand, and whether Ghostty agrees with us about which file it
+# reads — `ghostty +show-config` is the only authority on that.
+export def "ghostty status" []: nothing -> record {
+  let cfg = (ghostty config-path)
+  {
+    installed: (which ghostty | is-not-empty)
+    config: $cfg
+    config_exists: ($cfg | path exists)
+    also_present: (candidates | where {|p| $p != $cfg and ($p | path exists) })
+    ours: (ours-path)
+    included: (if ($cfg | path exists) { includes? $cfg } else { false })
+    settings: (ghostty settings)
+    live_theme: (live-theme)
+  }
+}
+
+# ── internals ─────────────────────────────────────────────────────────────────
+
+def includes? [cfg: path]: nothing -> bool {
+  open $cfg | lines | any {|l| ($l | str trim) == $INCLUDE }
+}
+
+# Append the include line, once, after backing their config up. Creating the
+# config when there is none is part of the job: a user who has never written one
+# still gets the theme.
+def link []: nothing -> nothing {
+  let cfg = (ghostty config-path)
+  if not ($cfg | path exists) {
+    mkdir ($cfg | path dirname)
+    [
+      "# Ghostty configuration."
+      $"# The line below pulls in ($OURS), which `nu-config` writes."
+      ""
+      $INCLUDE
+      ""
+    ] | str join (char nl) | save -f $cfg
+    print $"created ($cfg)"
+    return
+  }
+  if (includes? $cfg) { return }
+  let backup = $"($cfg).backup-(date now | format date '%Y%m%d-%H%M%S')"
+  cp $cfg $backup
+  let text = (open $cfg)
+  let sep = if ($text | str ends-with (char nl)) { "" } else { (char nl) }
+  $"($text)($sep)(char nl)($MARK)(char nl)($INCLUDE)(char nl)" | save -f $cfg
+  print $"($cfg | path basename) now includes ($OURS) — backup at ($backup | path basename)"
+}
+
+# `ghostty +validate-config` on the whole chain, our file included. Silent when
+# Ghostty is not installed: a theme can be chosen before the terminal is there.
+def validate []: nothing -> record<ok: bool, err: string> {
+  if (which ghostty | is-empty) { return { ok: true, err: "" } }
+  let r = (^ghostty +validate-config --config-file=(ghostty config-path) | complete)
+  # Ghostty repeats each complaint once per surface it would apply to.
+  { ok: ($r.exit_code == 0), err: ([$r.stdout $r.stderr] | str join | str trim | lines | uniq | str join (char nl)) }
+}
+
+# What Ghostty itself reports, which is how we know we wrote to the file it
+# actually reads. Null when Ghostty is not installed or sets no theme.
+def live-theme []: nothing -> any {
+  if (which ghostty | is-empty) { return null }
+  ^ghostty +show-config
+  | lines
+  | parse -r '^theme\s*=\s*(?<t>.+)$'
+  | get -o 0.t
+}
