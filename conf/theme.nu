@@ -32,7 +32,11 @@ $env.BAT_THEME = $BAT_THEME | default (
 # `ls` file colours (LS_COLORS) come from vivid, baked into a generated file by
 # `nu-config tools setup`; without vivid Nushell's built-in default applies.
 
-# Try another theme in the running session without editing anything:
+# With THEME = "terminal" the theme to change is Ghostty's: `theme` (the
+# `terminal` module) repaints this window as you pick, and keeps the one you say
+# yes to.
+#
+# Try another Nushell theme in the running session without editing anything:
 #   source terminal.nu
 #   source catppuccin-latte.nu
 #   use std/config light-theme; $env.config.color_config = (light-theme)

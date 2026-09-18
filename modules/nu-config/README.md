@@ -17,41 +17,12 @@ nu-config module list       # what is enabled, lazy, loaded
 | `knobs [--overridden]` | every knob from `defaults.nu` and every module's `meta.nuon`, with whether your `settings.nu` sets it |
 | `module list \| info \| check \| enable \| disable \| lint` | the module system — `docs/modules.md` |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
-| `ghostty status \| set \| reset` | the terminal's own config, through one included file — see below |
 | `plugins list \| add` | the plugin registry |
 | `fetch completion <tool>` | vendor one from nu_scripts **into your directory**, never the distro |
 | `startup-time [n]` | time N cold interactive starts |
 | `loaded-files` | what was parsed this session — find a slow import |
 | `edit` / `edit user` | open the distro / your `settings.nu` |
 | `distro-root` / `user-root` / `install-status` | where things are |
-
-## Ghostty
-
-`THEME = "terminal"` means the terminal's sixteen colours *are* the Nushell
-theme, so choosing a theme means setting Ghostty's. That happens without ever
-rewriting the user's config:
-
-```
-<ghostty dir>/nushell-distro.ghostty    ours, rewritten whole
-config-file = ?nushell-distro.ghostty   one line appended to theirs, once
-```
-
-An included file is applied *after* the file that includes it, wherever the
-`config-file` line sits, so appending one line is enough — their own `theme =`
-never has to be found or edited. The `?` makes a missing include a silent no-op,
-so deleting our file is already an uninstall. Their config is copied to
-`config.backup-<timestamp>` before the one append, and `ghostty reset` takes
-both the file and the line away again, leaving the config byte-identical to what
-it was.
-
-`set` asks Ghostty to check its own work (`+validate-config`) and rolls the file
-back if it complains — an unknown key or a theme name Ghostty cannot find never
-survives. `status` reports the config Ghostty reads, any other candidate that
-exists, and the theme Ghostty itself ends up with, which is the only real proof
-that the include landed in the file being read.
-
-Ghostty has no `+reload` CLI action, so a write here reaches new windows only;
-the running window is repainted over OSC instead.
 
 ## Configuration
 

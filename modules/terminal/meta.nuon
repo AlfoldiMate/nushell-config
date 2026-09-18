@@ -1,0 +1,21 @@
+{
+  description: "The terminal itself: its theme (`theme`) and its configuration (`ghostty`)"
+  docs: "README.md"
+  # 10 ms to parse, for commands a shell uses once in a while: 95 ms of startup
+  # against 87 ms without, medians of 15 cold starts. Lazy, on `theme` or
+  # `ghostty` (MODULES_TRIGGERS) — the words its commands start with.
+  lazy: true
+  requires: [
+    {
+      bin: "ghostty"
+      hard: true
+      why: "the themes, their files and the config being written are all Ghostty's"
+      install: {
+        macos: "brew install --cask ghostty"
+        linux: "your package manager, or https://ghostty.org/download"
+        windows: "winget install --id Ghostty.Ghostty"
+      }
+    }
+  ]
+  knobs: {}
+}

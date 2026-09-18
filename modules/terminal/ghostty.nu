@@ -25,13 +25,13 @@
 #
 # Ghostty has no `+reload` CLI action — `reload_config` exists only as a keybind
 # action (`ghostty +list-actions`) — so a write here reaches new windows only.
-# The running window is repainted with OSC instead; see `nu-config theme`.
+# The running window is repainted with OSC instead; see theme.nu.
 
 # Our file, and the line that pulls it in. Relative, so it resolves next to
 # whichever config Ghostty reads.
 const OURS = "nushell-distro.ghostty"
 const INCLUDE = "config-file = ?nushell-distro.ghostty"
-const MARK = "# Added by `nu-config`; `nu-config ghostty reset` removes it again."
+const MARK = "# Added by the Nushell distro; `ghostty reset` removes it again."
 
 # The XDG config dir, which every platform has and dotfiles repos manage.
 def xdg-dir []: nothing -> path {
@@ -86,10 +86,10 @@ export def "ghostty set" [
 ]: nothing -> nothing {
   let merged = (ghostty settings | merge $settings | transpose key value | where value != null)
   let body = ([
-    "# Written by `nu-config`. The Nushell distro owns this file and rewrites it"
-    "# whole, so put your own settings in your Ghostty config, not here — it is"
-    "# included from there, and an included file is applied last, so only the"
-    "# keys below are taken out of your hands. `nu-config ghostty reset` undoes"
+    "# Written by the Nushell distro (`ghostty set`), which owns this file and"
+    "# rewrites it whole, so put your own settings in your Ghostty config, not"
+    "# here — it is included from there, and an included file is applied last, so"
+    "# only the keys below are taken out of your hands. `ghostty reset` undoes"
     "# the whole arrangement."
     ""
   ] ++ ($merged | sort-by key | each {|s| $"($s.key) = ($s.value)" }) ++ [""])

@@ -35,6 +35,10 @@ source $M_AGENT_STUB
 const M_AGENT = (if ("agent" in $MODULES) and ("agent" not-in $MODULES_LAZY) { ($MOD_DIR | path join agent load.nu) } else { null })
 source $M_AGENT
 
+# ── terminal ──────────────────────────────────────────────────────────────────
+const M_TERMINAL = (if ("terminal" in $MODULES) and ("terminal" not-in $MODULES_LAZY) { ($MOD_DIR | path join terminal load.nu) } else { null })
+source $M_TERMINAL
+
 # ── odata ─────────────────────────────────────────────────────────────────────
 const M_ODATA = (if ("odata" in $MODULES) and ("odata" not-in $MODULES_LAZY) { ($MOD_DIR | path join odata load.nu) } else { null })
 source $M_ODATA

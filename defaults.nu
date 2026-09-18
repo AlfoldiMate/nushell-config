@@ -22,9 +22,9 @@
 #   ls themes/  →  terminal  catppuccin-{latte,frappe,macchiato,mocha}
 #
 # "terminal", the default, is 16 ANSI colour names and no hex, so the terminal
-# decides what they look like: pick a theme in Ghostty and Nushell follows it,
-# with nothing generated and nothing to keep in sync. Catppuccin carries its
-# own 26-colour palette in hex instead and ignores the terminal.
+# decides what they look like: `theme` picks one of Ghostty's 463 themes and
+# Nushell follows it, with nothing generated and nothing to keep in sync.
+# Catppuccin carries its own 26-colour palette in hex and ignores the terminal.
 # "dark"/"light" are the neutral themes from the standard library.
 const THEME = "terminal"
 
@@ -139,7 +139,7 @@ $env.NU_COMPLETE_EVAL = "safe"
 # A module carries its OWN defaults, so its knobs are not listed in this file;
 # `nu-config knobs` reads them out of each module's meta.nuon. To add one of
 # your own, drop it in <your>/modules/ and `use` it from your settings.nu.
-const MODULES = [nu-config nu-complete agent odata]
+const MODULES = [nu-config nu-complete terminal agent odata]
 
 # Of those, the ones NOT parsed at startup. A lazy module is loaded by a
 # pre_execution hook on the first line that mentions it — measured at 828 ns
@@ -148,8 +148,10 @@ const MODULES = [nu-config nu-complete agent odata]
 # The catch, and it is inherent: pre_execution does not fire for `nu -c` or a
 # script, so a lazy module is interactive-only and a script has to say
 # `use odata *` itself. Move a name out of this list to have it always loaded.
-const MODULES_LAZY = [agent odata]
+const MODULES_LAZY = [terminal agent odata]
 
 # Extra words that should also trigger a lazy module, beyond its own name.
-# `odata`'s `expand` is a pipeline stage that does not repeat the module name.
-const MODULES_TRIGGERS = { odata: [expand] }
+# `odata`'s `expand` is a pipeline stage that does not repeat the module name;
+# nothing in `terminal` is called "terminal" — its commands start with `theme`
+# or `ghostty`, which is also why typing `ghostty +list-themes` loads it.
+const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty] }

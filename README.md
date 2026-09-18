@@ -37,9 +37,10 @@ conf/
 modules/nu-config/    maintenance commands (`help nu-config`)
 modules/nu-complete/  the completion engine: spec runner, caches, the smart Tab menu
 modules/agent/        Claude Code in the shell: agent ask | exec | skill | command (its README is the guide)
+modules/terminal/     the terminal itself: `theme` picks one of Ghostty's 463, `ghostty` writes its config
 modules/odata/        OData V2/V4 (SAP Gateway) clients: odata <entity> | where ... runs on the server
 completions/          one module per tool: brew.nu, git.nu (and nu_scripts vendored ones)
-themes/               colour themes (Catppuccin, four flavours)
+themes/               colour themes: terminal.nu (ANSI, the default) and Catppuccin's four flavours
 autoload/             machine-local drop-ins, gitignored, loaded last
 plugins/              plugin binaries you add yourself, gitignored
 docs/startup-order.md what Nushell loads when, and why that shapes this layout
@@ -70,7 +71,7 @@ committed.
 | Add an alias or small command | `conf/aliases.nu` |
 | Add a module | `modules/<name>.nu` or `modules/<name>/mod.nu`, then `use <name>` in `config.nu` |
 | Add completions for a tool | `agent completion <tool>` builds, wires and verifies `completions/<tool>.nu`; by hand: a spec (see `docs/completion.md`) or `nu-config fetch completion <tool>`, then a `use` line in `conf/completions.nu` |
-| Add a theme | `THEME = "terminal"` (the default) follows your terminal's own colours, so theme Ghostty; for a theme of your own, drop a file in your `themes/` and name it in `THEME` |
+| Change the theme | `theme` — pick from Ghostty's 463, the whole terminal is the preview; `THEME = "terminal"` (the default) makes Nushell follow it. For a theme of your own, drop a file in your `themes/` and name it in `THEME` |
 | Wire up a tool that emits a Nushell init file | append it to the registry in `modules/nu-config/tools.nu`, run `nu-config tools setup` |
 | Wire up a tool that does not | `conf/tools.nu`, guarded with `which` |
 | Add a plugin | `plugin add <path>` (resolves through `NU_PLUGIN_DIRS`), restart |
