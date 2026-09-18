@@ -89,6 +89,11 @@ requires: [
 <name>` reports; `nu-config doctor` flags a missing hard dependency. Nothing
 here ever runs an installer.
 
+An optional `paths: [...]` is consulted when PATH misses — a GUI application is
+installed without being on PATH. Ghostty on macOS is the case that forced it:
+its binary lives inside `Ghostty.app` and is only on PATH inside a Ghostty
+window, so `which` alone calls it missing on a machine where it plainly is not.
+
 ## Knobs
 
 A module carries its own defaults, so its knobs do **not** go in `defaults.nu`.

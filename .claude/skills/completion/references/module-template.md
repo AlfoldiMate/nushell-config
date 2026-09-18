@@ -4,6 +4,11 @@ Verified against Nushell 0.115.1 and `modules/nu-complete/engine.nu` on
 2026-09-11. Read `engine.nu` itself when in doubt: it is 180 lines and is
 the truth.
 
+`completions/README.md` in the repo is the same contract written for a
+person, and is where a change to the module shape should land first; this
+file is the working copy, with the draft-script and verifier detail the
+README leaves out. If the two disagree, the README wins.
+
 ## Template
 
 ```nu

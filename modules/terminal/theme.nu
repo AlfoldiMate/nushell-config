@@ -32,12 +32,12 @@ const NAMED_RE = '(?m)^\s*(?<k>background|foreground|cursor-color|selection-back
 export def "theme list" [
   --swatches   # add the theme's own sixteen colours as a column (+300 ms)
 ]: nothing -> table {
-  if (which ghostty | is-empty) { error make { msg: "ghostty is not on PATH" } }
+  if (ghostty-bin) == null { error make { msg: "ghostty is not installed — `terminal install ghostty`" } }
   # theme-dirs shells out, so it is resolved once: called per row the 463 themes
   # took 719 ms, hoisted they take 31 ms (333 ms with --swatches).
   let dirs = (theme-dirs)
   let themes = (
-    ^ghostty +list-themes --plain
+    ^(ghostty-bin) +list-themes --plain
     | lines
     | parse -r '^(?<theme>.+) \((?<source>[a-z]+)\)$'
     | insert path {|r| $dirs | get -o $r.source | default "" | path join $r.theme }
@@ -50,7 +50,7 @@ export def "theme list" [
 # The shipped one lives inside the install, so it is derived from the binary:
 # Ghostty.app on macOS, a Unix prefix elsewhere.
 def theme-dirs []: nothing -> record {
-  let root = (which ghostty | get 0.path | path expand | path dirname | path dirname)
+  let root = (ghostty-bin | path expand | path dirname | path dirname)
   let resources = (
     [
       ($root | path join Resources ghostty themes)   # Ghostty.app/Contents/
@@ -122,18 +122,20 @@ def paint [t: record]: nothing -> string {
   $pal ++ $named | str join
 }
 
-# Paint this session with a theme and change nothing on disk. Interactive only:
-# these bytes are instructions to a terminal, and in a pipeline they would be
-# data. That is not a safety rail, it is what they mean.
+# Paint this session with a theme and change nothing on disk. The test is
+# `is-terminal --stdout`, not `$nu.is-interactive`: these bytes are instructions
+# to a terminal and in a pipeline they would be data, so what matters is where
+# stdout goes. It is also why install.nu can preview — a script is never
+# "interactive", but its stdout is the terminal you are looking at.
 export def "theme preview" [name: string@theme-names]: nothing -> nothing {
-  if not $nu.is-interactive { error make { msg: "theme preview paints a terminal; there is none here" } }
+  if not (is-terminal --stdout) { error make { msg: "theme preview paints a terminal; stdout is not one" } }
   print -n (paint (theme palette $name))
 }
 
 # Hand the palette back to Ghostty's configuration — the way out of a preview
 # you did not keep, and of a session someone left half-painted.
 export def "theme reset" []: nothing -> nothing {
-  if not $nu.is-interactive { return }
+  if not (is-terminal --stdout) { return }
   print -n ([104 110 111 112 117 119] | each {|c| osc ($c | into string) } | str join)
 }
 
@@ -143,7 +145,7 @@ export def "theme reset" []: nothing -> nothing {
 export def "theme use" [name: string@theme-names]: nothing -> nothing {
   let t = (theme palette $name)      # a wrong name fails here, before anything is written
   ghostty set { theme: $name }
-  if $nu.is-interactive { print -n (paint $t) }
+  if (is-terminal --stdout) { print -n (paint $t) }
   print $"theme is ($name) — this window now, new windows from Ghostty's config"
 }
 
@@ -157,7 +159,9 @@ export def "theme use" [name: string@theme-names]: nothing -> nothing {
 # cancelled list leaves the terminal exactly as it was. The theme is applied once
 # you pick it, and the keep/discard question is one you answer looking at it.
 export def main []: nothing -> nothing {
-  if not $nu.is-interactive { error make { msg: "`theme` is the interactive picker; `theme use <name>` is not" } }
+  if not ((is-terminal --stdin) and (is-terminal --stdout)) {
+    error make { msg: "`theme` is the interactive picker and needs a terminal on both ends; `theme use <name>` is not" }
+  }
   let before = (ghostty settings | get -o theme)
   let rows = (theme list --swatches | select theme colours)
 

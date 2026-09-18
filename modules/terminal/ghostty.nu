@@ -33,6 +33,25 @@ const OURS = "nushell-distro.ghostty"
 const INCLUDE = "config-file = ?nushell-distro.ghostty"
 const MARK = "# Added by the Nushell distro; `ghostty reset` removes it again."
 
+# The Ghostty binary, wherever it is; null when there is none.
+#
+# On macOS it lives inside the app bundle and is only on PATH inside a Ghostty
+# window, because Ghostty's shell integration prepends GHOSTTY_BIN_DIR. A shell
+# started from Terminal.app, from SSH or by a script therefore sees no `ghostty`
+# at all — and `which ghostty` alone would report "not installed" for a terminal
+# that is plainly installed, which is exactly the case the installer meets.
+export def ghostty-bin []: nothing -> any {
+  let onpath = (which ghostty | get -o 0.path)
+  if $onpath != null { return $onpath }
+  [$env.GHOSTTY_BIN_DIR?
+   "/Applications/Ghostty.app/Contents/MacOS"
+   ($nu.home-dir | path join Applications "Ghostty.app" Contents MacOS)]
+  | compact | where {|d| $d | is-not-empty }
+  | each {|d| $d | path join ghostty }
+  | where {|p| $p | path exists }
+  | get -o 0
+}
+
 # The XDG config dir, which every platform has and dotfiles repos manage.
 def xdg-dir []: nothing -> path {
   $env.XDG_CONFIG_HOME? | default ($nu.home-dir | path join ".config") | path join ghostty
@@ -134,7 +153,7 @@ export def "ghostty reset" []: nothing -> nothing {
 export def "ghostty status" []: nothing -> record {
   let cfg = (ghostty config-path)
   {
-    installed: (which ghostty | is-not-empty)
+    installed: ((ghostty-bin) != null)
     config: $cfg
     config_exists: ($cfg | path exists)
     also_present: (candidates | where {|p| $p != $cfg and ($p | path exists) })
@@ -180,8 +199,9 @@ def link []: nothing -> nothing {
 # `ghostty +validate-config` on the whole chain, our file included. Silent when
 # Ghostty is not installed: a theme can be chosen before the terminal is there.
 def validate []: nothing -> record<ok: bool, err: string> {
-  if (which ghostty | is-empty) { return { ok: true, err: "" } }
-  let r = (^ghostty +validate-config --config-file=(ghostty config-path) | complete)
+  let g = (ghostty-bin)
+  if $g == null { return { ok: true, err: "" } }
+  let r = (^$g +validate-config --config-file=(ghostty config-path) | complete)
   # Ghostty repeats each complaint once per surface it would apply to.
   { ok: ($r.exit_code == 0), err: ([$r.stdout $r.stderr] | str join | str trim | lines | uniq | str join (char nl)) }
 }
@@ -189,8 +209,9 @@ def validate []: nothing -> record<ok: bool, err: string> {
 # What Ghostty itself reports, which is how we know we wrote to the file it
 # actually reads. Null when Ghostty is not installed or sets no theme.
 def live-theme []: nothing -> any {
-  if (which ghostty | is-empty) { return null }
-  ^ghostty +show-config
+  let g = (ghostty-bin)
+  if $g == null { return null }
+  ^$g +show-config
   | lines
   | parse -r '^theme\s*=\s*(?<t>.+)$'
   | get -o 0.t

@@ -3,6 +3,7 @@
 The terminal you are running in: its theme, and its configuration.
 
 ```nu
+terminal list                  # which terminals this distro knows, and what is true here
 theme                          # pick from Ghostty's 463, the terminal is the preview
 theme use "TokyoNight Storm"   # or name one; Tab completes them
 ghostty status                 # what this distro has written into Ghostty's config
@@ -12,7 +13,8 @@ The two belong in one module because of how this distro does colour. `THEME =
 "terminal"` makes Nushell's theme the terminal's own sixteen ANSI colours, so
 "change the Nushell theme" means "change Ghostty's theme": write Ghostty's
 configuration, and repaint the window you are sitting in. `theme.nu` chooses and
-paints, `ghostty.nu` writes.
+paints, `ghostty.nu` writes, `detect.nu` answers the two questions `install.nu`
+asks before either of them runs.
 
 ## Commands
 
@@ -27,6 +29,10 @@ paints, `ghostty.nu` writes.
 | `ghostty status` | the config Ghostty reads, what we own in it, and the theme Ghostty resolves |
 | `ghostty set <record>` | write keys into our own included file (a null value removes one) |
 | `ghostty reset` | remove our file and the one include line; their config is left as it was |
+| `terminal list` | every terminal in the registry: installed, running, configured, where its binary is |
+| `terminal current` | the row for the terminal this session runs in, or null |
+| `terminal install-plan [name]` | what this platform would have to run, and whether it can |
+| `terminal install [name]` | run it, after asking |
 
 Theme names are Tab-completable everywhere they are taken.
 
@@ -79,6 +85,31 @@ looking at it, and `theme reset` is the way out of one left behind.
 The list itself is not colourless, though: each row carries the theme's own
 sixteen colours as truecolor blocks, so all 463 are previewed at once.
 
+### Installed, and running in it, are two questions
+
+`install.nu` asks both, and they have different answers. *Installed* decides
+whether a theme can be written at all. *Running in it* decides whether the live
+OSC preview will be visible — painting the terminal you are looking at is only a
+preview if it is the terminal being configured; from Terminal.app or an SSH
+session it is a lie. `TERM_PROGRAM` answers the second in one environment-variable
+read, no processes.
+
+Detection is a registry rather than three `if`s, the same shape as the tool
+registry in `modules/nu-config/tools.nu` where "installed" is likewise the
+switch, so adding WezTerm or Kitty later is a record and not a refactor.
+Ghostty is the only entry, deliberately.
+
+### Ghostty is not on PATH
+
+On macOS the binary lives inside `Ghostty.app` and reaches PATH only through
+Ghostty's own shell integration, which prepends `GHOSTTY_BIN_DIR` to every shell
+it starts. So `which ghostty` finds it in a Ghostty window and misses it
+everywhere else — from Terminal.app, over SSH, in CI, and in the installer that
+is trying to decide whether to offer to install it. Every call here goes through
+`ghostty-bin`, which falls back to `$env.GHOSTTY_BIN_DIR` and the two app-bundle
+locations; `meta.nuon` carries the same paths in `requires.paths`, which is what
+makes `nu-config doctor` agree.
+
 ### One included file, never their config
 
 `ghostty set` writes `<ghostty dir>/nushell-distro.ghostty` and appends exactly
@@ -112,7 +143,7 @@ Ghostty reads it as long as Application Support holds nothing.
 
 ### Why it is lazy
 
-Parsing these two files costs 10 ms of every shell start, for commands a shell
+Parsing these files costs 10 ms of every shell start, for commands a shell
 uses once in a while, so `theme` and `ghostty` are trigger words
 (`MODULES_TRIGGERS` in `defaults.nu`). Typing `ghostty +list-themes` loads the
 module too, which is harmless.
@@ -124,6 +155,7 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 | What | Cost |
 |---|---|
 | startup with the module lazy | 87 ms, against 95 ms when it was parsed eagerly (medians of 15 cold starts) |
+| parsing the module | 4.6 ms — `nu -n -c 'use terminal *'` at 26.1 ms against a 21.5 ms empty run, medians of 15. `detect.nu` is 0.9 ms of it |
 | `theme list` | 31 ms — it spawns `ghostty +list-themes` |
 | `theme list --swatches` | 333 ms, reading all 463 theme files |
 | reading all 463 files | 39 ms; `(?m)` over the whole file rather than `lines` halves the parse, 49 ms against 109 ms |
@@ -137,7 +169,8 @@ mod.nu       re-exports both halves, and `terminal activate` (which does nothing
 load.nu      `use terminal *` + activate
 meta.nuon    description, the ghostty dependency, no knobs
 theme.nu     listing, parsing, painting, and the picker
-ghostty.nu   finding Ghostty's config, and the one line we add to it
+ghostty.nu   finding Ghostty and its config, and the one line we add to it
+detect.nu    the terminal registry: installed, running, how to get one
 ```
 
 ## Limits
@@ -146,7 +179,10 @@ ghostty.nu   finding Ghostty's config, and the one line we add to it
   terminal *` first, because `pre_execution` does not fire for `nu -c`.
 - Ghostty only. The OSC painting would work in any terminal that implements
   OSC 4/10/11/12/17/19, but the themes, the theme files and the config writing
-  are Ghostty's.
+  are Ghostty's. The registry in `detect.nu` is where a second terminal would
+  go; nothing else assumes there is only one.
+- Ghostty has no Windows build yet, so `terminal install` on Windows prints the
+  download page and runs nothing.
 - Ghostty cannot reload its config from the CLI (`reload_config` is a keybind
   action), so a write reaches new windows only; the running one is repainted
   over OSC instead. The two together are why `theme use` does both.

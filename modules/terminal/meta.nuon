@@ -1,5 +1,5 @@
 {
-  description: "The terminal itself: its theme (`theme`) and its configuration (`ghostty`)"
+  description: "The terminal itself: which one you have (`terminal`), its theme (`theme`), its configuration (`ghostty`)"
   docs: "README.md"
   # 10 ms to parse, for commands a shell uses once in a while: 95 ms of startup
   # against 87 ms without, medians of 15 cold starts. Lazy, on `theme` or
@@ -10,10 +10,13 @@
       bin: "ghostty"
       hard: true
       why: "the themes, their files and the config being written are all Ghostty's"
+      # Ghostty on macOS is an app bundle: the binary is on PATH only inside a
+      # Ghostty window, where its shell integration prepends GHOSTTY_BIN_DIR.
+      paths: ["/Applications/Ghostty.app/Contents/MacOS/ghostty" "~/Applications/Ghostty.app/Contents/MacOS/ghostty"]
       install: {
         macos: "brew install --cask ghostty"
         linux: "your package manager, or https://ghostty.org/download"
-        windows: "winget install --id Ghostty.Ghostty"
+        windows: "no Windows build yet — https://ghostty.org/download"
       }
     }
   ]

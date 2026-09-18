@@ -111,7 +111,11 @@ $env.config.shell_integration.osc133 = true    # prompt marks: jump between prom
 $env.config.shell_integration.osc633 = true    # VS Code's extension of osc133
 $env.config.use_ansi_coloring = "auto"
 $env.config.bracketed_paste = true
-$env.config.use_kitty_protocol = false         # true lets Tab and Ctrl+I be bound separately
+# true lets Tab and Ctrl+I be bound separately, which needs a terminal that
+# implements the Kitty keyboard protocol. Ghostty does; `terminal current` is
+# how you tell what you are in. Left false because it is a behaviour change and
+# a shell started somewhere else would lose the keys.
+$env.config.use_kitty_protocol = false
 
 # ── Pager ─────────────────────────────────────────────────────────────────────
 # -R keeps colour, -F quits when it fits on one screen, -X leaves output visible.
@@ -152,6 +156,7 @@ const MODULES_LAZY = [terminal agent odata]
 
 # Extra words that should also trigger a lazy module, beyond its own name.
 # `odata`'s `expand` is a pipeline stage that does not repeat the module name;
-# nothing in `terminal` is called "terminal" — its commands start with `theme`
-# or `ghostty`, which is also why typing `ghostty +list-themes` loads it.
+# most of `terminal` is not called "terminal" — `terminal list` is, but the rest
+# of its commands start with `theme` or `ghostty`, which is also why typing
+# `ghostty +list-themes` loads it.
 const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty] }

@@ -314,8 +314,16 @@ def module-meta [path: string]: nothing -> record {
 }
 
 # Is a declared dependency satisfied on this machine?
+#
+# `paths` is checked when PATH misses, because a GUI application is installed
+# without being on PATH: Ghostty on macOS lives in the app bundle and is only
+# on PATH inside a Ghostty window, so `which` alone would call it missing on a
+# machine where it is plainly there.
 def dep-state [d: record]: nothing -> record {
-  let present = (which ($d.bin? | default "") | is-not-empty)
+  let present = (
+    (which ($d.bin? | default "") | is-not-empty)
+    or (($d.paths? | default []) | any {|p| $p | path expand | path exists })
+  )
   let hard = ($d.hard? | default true)
   {
     bin: ($d.bin? | default "?")

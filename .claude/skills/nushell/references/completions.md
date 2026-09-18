@@ -1,8 +1,12 @@
 # Completions and externs
 
-Nushell 0.114.1, with a 0.115.1 section at the end (command-wide completers,
-`commandline complete`, menu sources) — read that first for anything that
-touches the engine in this config (`modules/nu-complete`, `docs/completion.md`).
+Nushell 0.114.1, with two sections at the end: **0.115.1** (command-wide
+completers, `commandline complete`, menu sources — the installed binary, and
+what this config runs on) and **the next release** (#18791 unified every
+completer's input and output; merged upstream, not released). Read the 0.115.1
+section first for anything that touches the engine in this config
+(`modules/nu-complete`, `completions/README.md`, `docs/completion.md`), and the
+last one before writing a completer that has to survive the upgrade.
 
 ## Custom completions
 
@@ -451,3 +455,205 @@ test completion from a script.
 closures included — the cheap way to classify a line. `scope commands`
 costs 18 ms and 476 `stor insert`s ~115 ms, which is why the signature
 table is built once in a background `job spawn`.
+
+## The next release: one input contract for every completer
+
+[#18791](https://github.com/nushell/nushell/pull/18791) landed on main on
+2026-09-09 (merge `b2637148`). **It is not in 0.115.1** — the installed binary
+has neither `attr interactive` nor `commandline complete --input`, which is the
+one-line check for whether a given `nu` has it:
+
+```nu
+nu -n -c 'attr interactive' | complete | get exit_code    # 0 → has it, 1 → 0.115.x
+```
+
+Everything below was verified on 2026-09-18 against a local `cargo build` of
+that commit (it reports version 0.115.2), not read off the PR description —
+which is worth the trouble, because the PR text is wrong or incomplete in two
+places noted below.
+
+### Inputs are bound by name, not by position
+
+Every completion entry point — a parameter completer (`arg: string@c`), a
+command-wide completer (`@complete c`), the external completer closure, and a
+menu `source` — is now handed **one record**, and its positional parameters are
+filled from that record **by name**. Order does not matter; a name outside the
+set gets `nothing` plus a diagnostic in the completion log.
+
+```nu
+def complete-branch [token: record] { ... }          # just the token
+def complete-at-place [place: record] { ... }        # where the cursor is
+def carapace [buffer: string] { ... }                # the whole line
+def both [place: record, token: record] { ... }      # any subset, any order
+```
+
+The three recognized names (`INPUT_FIELDS` in the source):
+
+| `token` | the token at the cursor | `{text, kind, span}` — `kind` is `head`, `flag`, `value` or `block`; `span` is `nothing` for alias-expanded tokens. A cursor after a space is an empty `value` token whose span is zero-width at the cursor. |
+| `place` | what is being completed | `{cursor, target, kind, flag?, index?, shape?}` — `cursor` is a byte offset, `target` the `{start, end}` a suggestion replaces. `flag` is present for a flag value, `index` for a positional or external arg, `shape` when the declared syntax shape is known. |
+| `buffer` | the line up to the cursor | the exact typed text, across pipes, closures and `;`. Never anything past the cursor. |
+
+The PR description lists four values for `place.kind`. There are **eleven**
+(`ResolvedCursor::kind` in `completions/completer.rs`), and the one you meet
+first is not among the four:
+
+```
+command  flag-name  flag-value  positional  operator  cell-path
+variable  attribute-name  attributable-item  external-arg  file
+```
+
+`external-arg` is what an *undeclared* external's arguments get — `git checkout
+mai` with no extern for git gives `kind: external-arg, index: 1`. Declare the
+extern (as `completions/*.nu` do) and the same slot becomes `positional`.
+Measured on the build: `ls ` → `positional` with `shape: "oneof<glob, string>"`,
+`ls -` → `flag-name`, `[1 2] | each {|x| $x ` → `operator`.
+
+Two rules worth memorising. **Use `place.target`, not `token.span`,** when
+returning a custom span — they differ wherever a completion covers more than one
+token (a multi-word command head, a cell path). And **use `buffer` instead of
+calling `commandline`** inside a completer: `buffer` is always the line being
+completed, while `commandline` reads editor state and can come back empty.
+
+`std/util structure` turns a buffer into a `{text, kind, span}` table — it is
+`ast --flatten | rename text kind span | update kind { str replace "shape_" "" }
+| uniq-by span`, i.e. the parser's view with duplicate spans collapsed. Its own
+docs call the parser lossy; reach for the raw `buffer` when exact text matters.
+
+### The old shapes still work, and warn
+
+There is a compatibility bridge. Only the **first two** positionals, and only
+those whose names are *not* `token`/`place`/`buffer`, receive their old values:
+
+| Completer | Legacy slot 0 | Legacy slot 1 |
+|---|---|---|
+| parameter | the old `context` string | the old `position` int |
+| command-wide / external | the old `spans` list | `nothing` |
+| menu source | the buffer | the position int |
+
+Using one queues a deprecation warning (`ReportMode::FirstUse`) that the REPL
+prints after completion finishes — the warning is deferred because printing from
+the completion thread would land in the middle of the line being edited.
+
+The mixed case is the one that surprises: a menu source written
+`{|buffer, position| ... }` keeps working, but `buffer` is now a *recognized*
+name, so it is filled with the new whole-line semantics while `position` comes
+from the bridge — and the pair still warns. `def c [spans: list<string>]` on a
+`@complete` extern likewise keeps receiving its span list and starts warning.
+
+Migration, per the source's own `migration()` strings:
+
+| Was | Becomes |
+|---|---|
+| `def c [context, pos]` (parameter) | `[buffer, place]`; `$place.cursor` for the position |
+| `def c [spans]` (command-wide/external) | `[buffer]`, parsed — or `[token, place]` if the token is all you needed |
+| `{\|spans\| ...}` external closure | `{\|buffer\| ...}` |
+| `{\|buffer, position\| ...}` menu source | `{\|buffer, place\| ...}`; `$place.cursor` for the position |
+
+### Output: strings, records, or an envelope
+
+A completer may return `null` to **decline** (the next source runs), a list of
+strings, a list of suggestion records, a single record, or an envelope:
+
+```nu
+{
+  completions: [ {value: main, description: "default branch"} ]
+  options: { filter: true, completion_algorithm: "substring", match_description: true }
+  fallback: true          # keep these results AND continue to the next source
+}
+```
+
+Suggestion fields: `value`, `display_override`, `description`, `kind`, `style`,
+`span` (either end omittable), `extra`, `append_whitespace`, `match_indices`.
+`options` takes `filter`, `sort`, `case_sensitive`, `match_description`,
+`completion_algorithm`.
+
+**Filtering defaults differ by kind**: parameter completers are filtered by
+Nushell, command-wide and external ones are not (they usually filter
+themselves).
+
+> **`options.filter: true` does not work on a command-wide completer in this
+> build.** Verified: a parameter completer returning `[alpha alptest beta]` at
+> `p alp` correctly yields `[alpha, alptest]`, while the same list from a
+> `@complete` completer with `options: {filter: true}` yields all three, on both
+> a `def` and an `extern`. The flag itself is read — asking for
+> `{filter: false, sort: true}` logs "Sorting won't happen because filtering is
+> disabled" and `{filter: true, sort: true}` does not — so the narrowing is
+> being asked for and then matching against an empty prefix
+> (`ctx.prefix_str()`), which matches everything. File completion reached
+> through `fallback` *does* narrow on the same line, so the prefix exists; it
+> just does not reach this path.
+>
+> **Consequence: a command-wide completer must still filter its own output.**
+> Do not delete hand-rolled filtering on the strength of this option.
+
+`fallback: true` does work as documented, and is the declarative form of "and
+also ask the next source". Verified: a completer returning
+`{completions: [CUSTOM], fallback: true}` at `f1 alp` yields
+`[CUSTOM, alpaca.txt]` — its own result plus prefix-matched file completion —
+where `fallback: false` yields `[CUSTOM]` and returning `null` yields
+`[alpaca.txt]`. That replaces a completer that calls the external completer by
+hand to chain to carapace.
+
+Malformed output is isolated: a bad suggestion, style, span or option is
+reported in the completion log without discarding the valid ones around it.
+
+### `@interactive`
+
+Completers run on a background worker with stdin suppressed — correct for
+normal completion, fatal for anything that wants the terminal. `@interactive`
+moves one onto the line-editor thread instead:
+
+```nu
+@interactive
+def pick-file [token: record] { ls | get name | to text | ^fzf --query $token.text | lines }
+def open-file [path: string@pick-file] { open $path }
+```
+
+It only chooses *where* a completer runs; it does not attach it. The external
+completer is a closure and cannot carry an attribute, so to make it interactive
+have the closure call an `@interactive` command — the engine sees through the
+dispatch. Declare `token: record` even when the body ignores it, so a direct
+call fails at the call site rather than deep in the body; `commandline complete
+--input` is how you get a real record to test with.
+
+### Debugging
+
+```nu
+'git checkout mai' | commandline complete --input   # {token, place, buffer}, no completer run
+```
+
+`--input` works for an `@interactive` completer too, which cannot otherwise run
+outside the line editor. It cannot be combined with `--detailed` or `--type`.
+`--detailed` now returns suggestions in the custom-completer output form, and
+`--type` asks for one kind of completion, which is what lets a completer add to
+Nushell's own answer:
+
+```nu
+def complete-command [token: record] { [my-shortcut] ++ ($token.text | commandline complete --type command) }
+```
+
+### Behaviour changes to watch for
+
+- The experimental global `background-completions` option is **removed**;
+  `@interactive` is the per-completer replacement.
+- A parameter completer that **fails** now returns no suggestions instead of
+  falling back to the working directory.
+- Command-wide and external completers may decline with `null`.
+- Completion state is resolved at the cursor, including inside nested closures,
+  through aliases, and at multi-word command heads and empty argument slots.
+- Aliases resolve through to the completion command, `@interactive` included.
+
+### What it means for this config
+
+`modules/nu-complete/engine.nu` takes `spans`, and `conf/completions.nu`'s menu
+source is `{|buffer, position| ... }`: both ride the bridge and both will warn
+on upgrade. Verified by running this config under the build — `git checkout `
+still completes branches, remotes and changed files, `nu-complete smart
+"ls | where " 11` still returns typed columns, and each tool module prints one
+deprecation warning pointing at its `def complete-<tool> [spans: ...]` line.
+
+The fixes are small and local: `engine.nu` is the only place the `spans`
+contract exists, and the menu source is one line. Worth taking at the same time:
+`place.target` replaces the hand-computed replacement spans in `smart.nu`, and
+`fallback: true` can retire `nu-complete external`. `nu-complete filter` has to
+stay until the `options.filter` bug above is fixed.

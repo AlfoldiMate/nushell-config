@@ -216,6 +216,72 @@ cost of each slot.
 - "NO RECORDS FOUND" under the prompt is Reedline's message for an empty
   menu, not an error.
 
+## The next release: what changes here, and what gets better
+
+Nushell [#18791](https://github.com/nushell/nushell/pull/18791) ("unify
+completer inputs and output contracts") merged upstream on 2026-09-09. It is
+**not in 0.115.1**, so nothing below is in effect yet; the check for a given
+binary is `nu -n -c 'attr interactive'` (exit 0 → it has it). Everything here
+was verified on 2026-09-18 by building that commit and running this config
+under it, not read off the PR description. The details are in
+`.claude/skills/nushell/references/completions.md`.
+
+Every completer — per-argument, `@complete`, the external closure, and a menu
+`source` — now receives one record whose fields bind to the parameters it
+**names**: `token` (`{text, kind, span}`), `place` (`{cursor, target, kind,
+flag?, index?, shape?}`), `buffer` (the whole line up to the cursor). Old
+signatures keep working through a bridge that prints a deprecation warning the
+first time it is used.
+
+**What breaks (loudly, not silently).** Two places ride the bridge:
+
+| Where | Today | Becomes |
+|---|---|---|
+| `completions/*.nu` → `def complete-<tool> [spans: list<string>]` | gets the span list | `[buffer]` and parse, or `[token, place]` |
+| `conf/completions.nu` → `source: {\|buffer, position\| nu-complete smart $buffer $position }` | `buffer` already binds to the *new* whole-line value; `position` comes off the bridge | `{\|buffer, place\| nu-complete smart $buffer $place.cursor }` |
+
+Both keep working until the bridge is removed. The `spans` contract exists in
+exactly one place — `nu-complete run` in `modules/nu-complete/engine.nu` — so
+the tool modules do not each need a rewrite.
+
+**What gets better.** The new surface removes work this engine currently does
+by hand:
+
+- `place.target` is the exact range a suggestion replaces, including where a
+  completion spans several tokens (a cell path, a multi-word head). It replaces
+  `replace-span` in `smart.nu` and the arithmetic at all four call sites.
+- `place.kind` (`positional` | `flag-name` | `flag-value` | `command`), `place.flag`,
+  `place.index` and `place.shape` come from the parser. `slot-of` and
+  `shape-at` in `smart.nu` re-derive exactly this by walking tokens; for
+  built-ins, which is all `smart.nu` handles, the parser's answer is better than
+  ours. The spec walk in `engine.nu` still has to do its own pass, because
+  Nushell sees `...args` and knows nothing of the tool's subcommand tree.
+- `options.filter: true` is *supposed* to hand filtering back to Nushell, which
+  would retire `nu-complete filter`. **It does not work for a command-wide
+  completer in the merged build** — the flag is read, but the narrowing matches
+  against an empty prefix, so nothing is filtered (a parameter completer on the
+  same line filters correctly). `nu-complete filter` stays until that is fixed
+  upstream; re-test with the check at the top of this section.
+- `fallback: true` in the returned envelope means "keep my results and continue
+  to the next source", which is what `nu-complete external` does by calling
+  carapace by hand. The `answered` bookkeeping in `nu-complete run` exists only
+  to decide that, and could go.
+- `@interactive` runs a completer on the line-editor thread with the terminal,
+  so a slot with thousands of candidates (`brew install`) could offer an `fzf`
+  picker instead of a columnar menu.
+- `buffer` reaches a `@complete` completer directly. Layer 3 still has to exist
+  — built-ins cannot carry `@complete` without shadowing them, and that lists
+  them twice — but a tool module could do its own whole-line reasoning without
+  going through the menu.
+- `commandline complete --input` returns the three inputs without running a
+  completer, which is a better debugging tool than everything in the Debugging
+  section below.
+
+None of this is urgent: it is a simplification of code that works, and it costs
+a release upgrade. The order to do it in when the release lands is the table
+first (stop the warnings), then `place.target`, then `options.filter` and
+`fallback`, each verifiable with the test lines in `completions/README.md`.
+
 ## Known limits
 
 - The first Tab in a session pays the signature table (115 ms) unless the
