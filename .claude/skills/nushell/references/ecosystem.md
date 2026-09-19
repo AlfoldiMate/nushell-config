@@ -38,7 +38,10 @@ Usable two ways: copy individual files onto `NU_LIB_DIRS`, or clone the repo and
 add the relevant subdirectory to the path. Files carry `nupm.nuon` metadata but
 do not require nupm.
 
-On this machine: `nu-fetch-completions <tool>` and `nu-fetch-theme <name>`.
+On this machine: `nu-config fetch completion <tool>` vendors one into the
+user's `completions/`, which comes first on `NU_LIB_DIRS`. There is no theme
+fetcher any more — a theme downloaded onto a live machine is state the distro
+keeps out of the config directory; the shipped themes are in `themes/`.
 
 ## `awesome-nu`
 

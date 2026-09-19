@@ -1,162 +1,117 @@
 # This machine's Nushell setup
 
-macOS (arm64), Nushell **0.114.1** via Homebrew, login shell `/bin/zsh`,
-terminal Ghostty, prompt Starship, theme Catppuccin Macchiato.
+macOS (arm64), Nushell **0.115.1** via Homebrew, login shell `/bin/zsh`,
+terminal Ghostty, prompt Starship, Nushell theme `"terminal"` — sixteen ANSI
+names, so Ghostty's theme is the shell's theme.
 
-## `~/.nu` is the single source of truth
+## Two directories, and which one to edit
 
-```
-~/Library/Application Support/nushell  →  ~/.nu     (symlink)
-```
-
-Every Nushell path derives from the config dir, so this one link redirects all
-of them. No environment variables, no launch flags — works identically for
-Ghostty, VS Code, Zed, `ssh`, `cron`, and anything that shells out to `nu`.
-
-**Never edit `~/Library/Application Support/nushell` directly** — edit `~/.nu`.
-
-`~/.nu` is a git repository. Backup of the pre-migration config:
-`~/Library/Application Support/nushell.pre-migration-2026-07-31`.
-
-## Layout
+This is a **distro** with a user layer, not a config you edit in place:
 
 ```
-~/.nu/
-├── config.nu              search paths only (NU_LIB_DIRS / NU_PLUGIN_DIRS)
-├── env.nu                 legacy slot, intentionally empty
-├── login.nu               login-shell env (inactive — login shell is zsh)
-├── autoload/              the real config, alphabetical
-│   ├── 00-env.nu          PATH, EDITOR, env vars, ENV_CONVERSIONS
-│   ├── 10-ui.nu           tables, banner, history, errors, vi mode
-│   ├── 20-theme.nu        colours
-│   ├── 30-prompt.nu       starship + indicators
-│   ├── 40-line-editor.nu  Reedline menus + keybindings
-│   ├── 50-completions.nu  completion behaviour, external completer
-│   ├── 60-aliases.nu      aliases and small commands
-│   ├── 70-integrations.nu zoxide/atuin, command_not_found, fzf
-│   ├── 80-modules.nu      `use` statements
-│   └── 90-local.nu        machine-local, gitignored
-├── modules/               nu-manage.nu, integrations.nu
-├── themes/                catppuccin-macchiato.nu + nu-themes/ alternates
-├── completions/  scripts/  overlays/  vendored/     all on NU_LIB_DIRS
-├── plugins/                                         on NU_PLUGIN_DIRS
-├── vendor/autoload/       generated integrations (gitignored)
-├── docs/startup-order.md
-├── CLAUDE.md              instructions for Claude Code in this repo
-└── .claude/skills/nushell this skill (symlinked into ~/.claude/skills/nushell)
+THE DISTRO (a git checkout)          YOUR config directory
+~/.config/nushell                    ~/Library/Application Support/nushell
+  distro.nu    entrypoint      ◀──── config.nu     3 lines, sources the distro
+  defaults.nu  every knob            settings.nu   the overrides
+  conf/        behaviour             autoload/*.nu drop-ins, loaded last
+  modules/ completions/ themes/      completions/ themes/ modules/ plugins/
+  docs/ templates/ bootstrap/        history.sqlite3, plugin.msgpackz, vendor/, .state/
 ```
 
-`completions/` is currently empty — a documented slot, not a dead directory.
+Nushell only knows the right-hand side: it loads `config.nu` from its own config
+directory and derives history, the plugin registry, the autoload dirs and
+`$nu.data-dir` from that same place.
 
-`NU_LIB_DIRS` covers `modules themes completions scripts overlays vendored`, so
-a bare filename resolves from anywhere:
+- **Changing the distro** (this repo) — edit it here. A parse error breaks every
+  new terminal, so `nu-check distro.nu` before reporting anything done.
+- **Changing this machine only** — a knob goes in the user's `settings.nu`
+  (`nu-config edit user`), behaviour goes in a file in the user's `autoload/`.
+- **Never write user state into the checkout.** History, the plugin registry,
+  generated tool files and module state all live in the user directory; the
+  `.gitignore` is four lines because of it.
 
-```nu
-use nu-manage.nu *
-source catppuccin-macchiato.nu
-```
+`docs/layout.md` in the repo is the full map — layering, formats, load order,
+per-platform coverage. `docs/startup-order.md` is what Nushell loads when.
 
-## Where to change what
+## The rules that shape the files
 
-| Want to change | Edit |
+- Settings are leaf-key assignments (`$env.config.a.b = ...`), never whole
+  records, never `$env.config = {...}`.
+- **Values in `defaults.nu`, behaviour in `conf/`.** A `conf/` file must never
+  assign a value `defaults.nu` owns: it runs after the user's `settings.nu` and
+  would silently overwrite it.
+- Paths are parse-time constants derived from `path self`; never a hard-coded
+  home directory. `use`/`source` need parse-time paths, which is why an optional
+  include is a const `if` around `source null`.
+- Optional tools are guarded with `which`; `alias` and `extern` cannot sit
+  inside an `if` — they are parse-time.
+- `.nu` for anything the parser must see, NUON for anything tooling reads at
+  runtime. The two JSON caches that remain are measured and commented.
+- Modules follow `docs/modules.md`: `mod.nu` + `load.nu` + `meta.nuon` +
+  `README.md`, wiring in `activate`, knobs in `meta.nuon`. `nu-config module
+  lint` enforces it.
+
+## Commands this config adds
+
+| | |
 |---|---|
-| PATH, env vars, `$EDITOR` | `autoload/00-env.nu` |
-| Table style, banner, vi mode, history | `autoload/10-ui.nu` |
-| Colours / theme | `autoload/20-theme.nu` |
-| Prompt | `autoload/30-prompt.nu` (or `~/.config/starship.toml`) |
-| Keybindings, menus | `autoload/40-line-editor.nu` |
-| Completion behaviour | `autoload/50-completions.nu` |
-| Aliases | `autoload/60-aliases.nu` |
-| Tool integrations, hooks | `autoload/70-integrations.nu` |
-| Loading a new module | `autoload/80-modules.nu` |
-| Anything machine-specific/private | `autoload/90-local.nu` (gitignored) |
-| Search paths | `config.nu` |
+| `nu-config` | `doctor`, `knobs`, `module list\|lint\|enable\|disable`, `tools setup\|status`, `plugins list\|add`, `startup-time`, `loaded-files`, `fetch completion`, `edit`, `edit user` |
+| `nu-complete` | the Tab engine: `status`, `cache clear`, `run`, `smart` |
+| `theme` / `ghostty` / `font` / `terminal` | the terminal itself (lazy module) |
+| `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |
+| `odata` | OData V2/V4 services as tables (lazy) |
 
-## Commands (from `modules/nu-manage.nu`)
-
-`nu-doctor` · `nu-startup-time [n]` · `nu-loaded-files` ·
-`nu-plugins-available` · `nu-plugins-add-core` · `nu-fetch-completions <tool>` ·
-`nu-fetch-theme <name>` · `nu-update-vendored` · `nu-edit` · `nu-root`
-
-From `modules/integrations.nu`:
-`integrations status` · `integrations setup` · `integrations remove <tool>`
-
-`nu-doctor` is the first thing to run when something looks wrong — it verifies
-the symlink, prints every derived path, lists autoload order, and shows plugin
-and tool status.
+`nu-config doctor` is the first thing to run when something looks wrong: both
+roots, the layout state (`split` is the target), every derived path, a parse
+check, tools, plugins, modules and startup time.
 
 ## Current configuration
 
 - **Edit mode** vi; cursor `line` in insert, `block` in normal
-- **Buffer editor** `["zed", "--wait"]` (Ctrl+O)
-- **Tables** `psql`, index always, footer at 25 rows
-- **Banner** off
-- **History** plaintext, 100k entries (switch to `sqlite` in `10-ui.nu` for
-  timestamps, cwd and session isolation)
-- **Menus** `ide_completion_menu` — Ctrl+L
-- **Keybindings** Ctrl+L completion menu, Ctrl+Y history menu (both vi modes)
-- **Theme** Catppuccin Macchiato; also sets `highlight_resolved_externals` and
-  `explore` colours
-- **`open`** left alone — it is Nushell's parser. Launch a file in its default
-  app with the built-in `start <path>`
+- **Editor** first of `zed --wait`, `nvim`, `vim`, `vi` that exists
+- **Tables** `markdown`, index always, footer at 25 rows
+- **Banner** off · **History** sqlite, 1M entries
+- **Tab** the smart menu (`SMART_TAB`), pipeline-aware, `NU_COMPLETE_EVAL = "safe"`
+- **Theme** `"terminal"`; `VIVID_THEME` and `BAT_THEME` follow it
+- **Modules** `nu-config` and `nu-complete` eager; `terminal`, `agent`, `odata`
+  lazy — loaded by a `pre_execution` hook on the first line that mentions them,
+  which means they do **not** load for `nu -c` or a script
+- **`open`** left alone: it is Nushell's parser. Use `start <path>` to launch a
+  file in its app, and `%open` inside completion modules in case a user aliased it
 
-## Installed and available
+## Tools
 
-Core plugins present at `/opt/homebrew/bin` but **not yet registered**:
-`polars` `formats` `gstat` `query` `inc` → `nu-plugins-add-core`
+Generated into the user's `vendor/autoload/` by `nu-config tools setup`, from
+the registry in `modules/nu-config/tools.nu`: **zoxide**, **atuin**,
+**carapace**, **vivid** (baked into a literal — calling it at every start costs
+milliseconds for nothing). Installed → generated, absent → pruned, so presence
+on PATH is the switch. Starship is wired by hand in `conf/prompt.nu`; Homebrew's
+`command_not_found` and direnv are in `conf/tools.nu`, each guarded with `which`.
 
-Tools present on PATH: starship, zoxide, atuin, vivid, fzf, eza, bat, rg, fd,
-delta, gh, nvim, zed, cargo. Also installed but **deliberately not wired into
-this config**: carapace, direnv.
+`nu -l -c` does **not** load the vendor autoload directory, so carapace and
+zoxide are absent there — source the generated file if a test needs one.
 
-## Tool integrations
-
-Generated into `vendor/autoload/` by `integrations setup`
-(`modules/integrations.nu`, or `scripts/setup-integrations.nu` standalone).
-
-Active: **zoxide** (`z`/`zi` + PWD hook) · **atuin** (Ctrl+R history) ·
-**vivid** (`LS_COLORS`).
-
-The rule is *installed → generated; absent → pruned*. Nothing is commented out;
-presence on PATH is the switch, gated by the registry in
-`modules/integrations.nu`. Idempotent, so re-run after installing or upgrading
-a tool.
-
-Two details specific to this setup:
-
-- **vivid is baked**, not invoked at startup — its output is a static ~18 kB
-  string and calling it each launch costs ~5 ms. Theme via
-  `$env.NU_VIVID_THEME` in `90-local.nu`, then re-run setup.
-- **`00-env.nu` does not filter PATH on `path exists`**, only `uniq`. Some
-  tools prepend a directory they create lazily (carapace's bridge dir is the
-  classic case), and filtering stripped it every session.
-
-Composition holds because zoxide and atuin both *append* to hooks, keybindings
-and completions rather than replacing them, and `vendor/autoload/` runs before
-`autoload/`, so this config wins on any key it sets.
-
-Non-generatable integration config (Homebrew `command_not_found`, fzf Ctrl+T /
-Ctrl+G) lives in `autoload/70-integrations.nu`, each guarded with `which`.
-
-**Carapace and direnv were removed** on 2026-08-05 to keep the config lean.
-There is no external completer configured — `50-completions.nu` has the carapace
-closure commented out with instructions. Do not reintroduce either without
-being asked.
-
-## Maintenance
-
-After `brew upgrade nushell`:
+## Verifying a change
 
 ```nu
-nu-doctor              # paths still resolve?
-nu-plugins-add-core    # re-register against the new plugin protocol
+nu-check distro.nu                 # parse, follows every `source`
+nu -l -c 'nu-config doctor'        # loads the config for real
+nu -l -c 'nu-config module lint'   # the only check that reaches a lazy module
+nu -n -c '<snippet>'               # isolated snippet, no config
+nu -l -c 'nu-config startup-time'  # ~84 ms; regression-check after adding anything
 ```
 
-Plugins are protocol-versioned and silently break across upgrades.
+`nu -c '...'` and `nu script.nu` load no user config at all and prove nothing
+about this config. `nu -n` also has no `NU_LIB_DIRS`, so `nu-check` on a file
+that imports a module reports `false` there for reasons unrelated to the file.
 
-## Reverting the migration
+## After `brew upgrade nushell`
 
 ```nu
-rm ~/Library/Application\ Support/nushell
-mv ~/Library/Application\ Support/nushell.pre-migration-2026-07-31 ~/Library/Application\ Support/nushell
+nu-config plugins add    # the registry is protocol-versioned against the binary
+nu-config doctor
 ```
+
+Nushell makes breaking changes at minor versions: when the pin moves, the config
+is what has to be re-checked. `docs/plugins.md` explains why there is no plugin
+manager to do this for you.

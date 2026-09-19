@@ -1,6 +1,6 @@
 ---
 name: nushell
-description: Use when writing, debugging, or configuring Nushell (`nu`) — .nu scripts, modules, plugins, custom completions, `config.nu`/`env.nu`, `$env.config` settings, themes, Reedline keybindings and menus, overlays, hooks, the standard library, or the built-in MCP server (`nu --mcp`); also when converting bash/zsh/PowerShell to Nu, working with Nu's structured-data pipelines (tables, records, lists, cell-paths), or troubleshooting parse-time vs run-time errors. Covers this machine's config at ~/.nu.
+description: Use when writing, debugging, or configuring Nushell (`nu`) — .nu scripts, modules, plugins, custom completions, `config.nu`/`env.nu`, `$env.config` settings, themes, Reedline keybindings and menus, overlays, hooks, the standard library, or the built-in MCP server (`nu --mcp`); also when converting bash/zsh/PowerShell to Nu, working with Nu's structured-data pipelines (tables, records, lists, cell-paths), or troubleshooting parse-time vs run-time errors. Covers this machine's config: the Nushell distro at ~/.config/nushell and the user layer next to it.
 ---
 
 # Nushell
@@ -9,7 +9,7 @@ Nushell is a **structured-data shell with a statically-parsed, typed language**.
 It is not POSIX. Almost every mistake made by someone fluent in bash comes from
 assuming otherwise.
 
-Verified against **Nushell 0.114.1**. Nushell makes breaking changes at minor
+Verified against **Nushell 0.115.1**. Nushell makes breaking changes at minor
 versions — see `references/gotchas.md` § *Version drift* before trusting any
 snippet found online.
 
@@ -19,8 +19,10 @@ snippet found online.
    fast. `help <command>`, `config nu --doc`, and `scope commands` are ground
    truth. Signatures shown by `help` include the input/output type table, which
    is usually the fastest way to resolve an error.
-2. **Never edit `~/Library/Application Support/nushell` directly** on this
-   machine — it is a symlink to `~/.nu`. See `references/this-setup.md`.
+2. **Know which of the two directories to edit** on this machine: the distro
+   is the checkout at `~/.config/nushell`, and `~/Library/Application
+   Support/nushell` holds only what the user owns. See
+   `references/this-setup.md`.
 3. **Check parse time vs run time first** when a construct "should work" but
    doesn't. This causes more Nushell confusion than everything else combined.
    `references/gotchas.md` § *Parse time* covers it.
@@ -72,7 +74,7 @@ Read the one that matches the task; they are self-contained.
 | `references/interface.md` | Themes, `color_config`, shapes, Reedline menus and keybindings, prompts |
 | `references/stdlib.md` | `std` submodules and correct import forms |
 | `references/gotchas.md` | Parse time, common errors, performance, version drift |
-| `references/this-setup.md` | **This machine**: `~/.nu` layout, symlink, conventions |
+| `references/this-setup.md` | **This machine**: the distro/user split, the rules, what is configured |
 | `references/mcp.md` | The built-in MCP server: the three tools, `$history`, session state, background jobs |
 | `references/ecosystem.md` | `nu_scripts`, `awesome-nu`, nupm, notable plugins |
 

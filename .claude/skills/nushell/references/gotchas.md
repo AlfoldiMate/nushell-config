@@ -209,7 +209,8 @@ perfectly valid. Observed on 0.114.1: passing `-I <dir>` fixes `source` but not
 `use` in default (script) mode; `nu-check --as-module` resolves it.
 
 ```nu
-nu -n -I ~/.nu/modules -c "nu-check --as-module ~/.nu/autoload/80-modules.nu"
+nu -n -I ~/.config/nushell/modules -c "nu-check --as-module ~/.config/nushell/conf/modules.nu"
+nu -l -c 'nu-check <file>'    # simpler on this machine: the config supplies NU_LIB_DIRS
 ```
 
 So a `false` from `nu-check` on a config file is not by itself evidence of a
