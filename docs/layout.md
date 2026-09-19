@@ -180,7 +180,7 @@ itself, which is what makes `curl … | sh` work without a flag.
 
 **The test that the layering is right:** accept every default and your
 `settings.nu` has no assignments in it at all — `nu-config knobs --overridden`
-comes back empty, against 64 knobs that exist. Nothing is copied out of
+comes back empty, against 65 knobs that exist. Nothing is copied out of
 `defaults.nu` "so you can see it". A value you never mention keeps tracking the
 distro, including across a `git pull` that changes it.
 

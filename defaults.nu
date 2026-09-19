@@ -65,6 +65,12 @@ $env.config.cursor_shape.emacs = "line"
 $env.config.cursor_shape.vi_insert = "line"
 $env.config.cursor_shape.vi_normal = "block"
 
+# Reedline abbreviations: `{ gs: "git status" }` expands in place as you type,
+# so the full command is visible and editable before Enter — unlike an alias,
+# which substitutes silently at parse time. None are shipped: an abbreviation
+# is muscle memory and yours, not a distro's.
+$env.config.abbreviations = {}
+
 # ── Banner ────────────────────────────────────────────────────────────────────
 # true | "short" | false
 $env.config.show_banner = false

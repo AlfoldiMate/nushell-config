@@ -1,4 +1,4 @@
-# keybindings.nu — Reedline menus, keybindings and abbreviations
+# keybindings.nu — Reedline menus and keybindings
 #
 # Nushell's defaults are in effect: the columnar completion menu on Tab,
 # history menu on Ctrl+R (atuin takes that key over when installed), help
@@ -10,6 +10,9 @@
 #   $env.config.keybindings ++= [{ name: ..., modifier: ..., keycode: ..., mode: [...], event: {...} }]
 #   $env.config.menus ++= [{ name: ..., ... }]
 # Remove a default binding by rebinding its key to `{ send: none }`.
+#
+# Abbreviations are a value, not behaviour: the `abbreviations` knob in
+# defaults.nu.
 #
 # Discovery:
 #   keybindings list          every modifier, keycode, event and edit
@@ -43,11 +46,3 @@ $env.config.menus ++= [{
     selected_match_text: green_reverse
   }
 }]
-
-# ── Abbreviations ─────────────────────────────────────────────────────────────
-# Expand in place as you type, so the full command is visible and editable
-# before Enter — unlike aliases, which substitute silently at parse time.
-# $env.config.abbreviations = {
-#   gs: "git status"
-#   gd: "git diff"
-# }
