@@ -97,8 +97,14 @@ const DATA = (path self | path dirname | path join data <tool>.json)
 def spec-data []: nothing -> record { nu-complete cache "<tool>:spec" 1hr { %open $DATA } }
 ```
 
-`%open` of a 200 kB JSON is ~5 ms, once per hour per shell. A module that costs
-more than ~3 ms to parse is too big for a literal; check with
+JSON, and this is the one place in the distro that is not NUON. Measured on
+`brew-spec.json`, 195 kB: **1.2 ms** to `open` as JSON, **7.8 ms** as NUON, 9.3 ms
+as indented NUON — NUON's parser costs roughly 6x per byte at every size tried.
+Nothing but the completer reads these files, and the Tab menu source re-runs on
+every keystroke, so the fast format wins here and the rule bends. State a person
+reads or edits stays NUON (`docs/layout.md`, *Formats*).
+
+A module that costs more than ~3 ms to parse is too big for a literal; check with
 `nu -l -c 'nu-config startup-time'`.
 
 ## The spec format

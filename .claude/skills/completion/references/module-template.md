@@ -70,7 +70,9 @@ export extern main [...args]
 
 For a big static tree, keep the data in `completions/data/<tool>.json`
 (the draft script's `--json` output, pruned to `description`, `flags`,
-`subcommands`) and merge the sources in:
+`subcommands`) and merge the sources in. JSON here and NUON everywhere else in
+the distro is deliberate: 195 kB parses in 1.2 ms as JSON and 7.8 ms as NUON,
+and this file is read on the Tab path (`docs/layout.md`, *Formats*).
 
 ```nu
 const DATA = (path self | path dirname | path join data <tool>.json)

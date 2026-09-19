@@ -100,6 +100,9 @@ export def "nu-complete brew spec-from-zsh" [file: path]: nothing -> record {
   }
 }
 
+# JSON, where the rest of this config writes NUON, because this file is big
+# and sits on the Tab path: 195 kB parses in 1.2 ms as JSON and 7.8 ms as NUON
+# (`to nuon --indent 2`: 9.3 ms). Nothing reads it but the completer.
 def spec-file []: nothing -> path { nu-complete cache-dir | path join brew-spec.json }
 
 # The spec as data, regenerated when Homebrew ships a new zsh completion.

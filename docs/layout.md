@@ -91,6 +91,40 @@ The rule that makes layering work: **a `conf/` file must never assign a value
 `defaults.nu` owns.** It would run after your `settings.nu` and silently
 overwrite it.
 
+## Formats
+
+Two formats, and a reason for each:
+
+| | |
+|---|---|
+| `.nu` | anything the **parser** must see: `defaults.nu`, `settings.nu`, the enabled modules, themes |
+| NUON | anything tooling reads at **runtime**: module `meta.nuon`, state, registries, caches |
+
+`.nu` is not a style choice. `open` and `from nuon` are not const-evaluable in
+0.115 (`scope commands | where is_const` lists `path exists`, `if`, `path join`
+and the `str` commands — not `open`), so a value the parser has to know cannot
+come from a data file. Everything else is NUON: it is Nushell's own literal
+syntax, so a state file reads like the record it is and `open` needs no `--raw`
+and no converter.
+
+No JSON — with two measured exceptions, both machine-written caches that sit on
+the Tab path:
+
+| | |
+|---|---|
+| `$nu.cache-dir/nu-complete/brew-spec.json` | 195 kB: 1.2 ms as JSON, 7.8 ms as NUON |
+| `$nu.cache-dir/odata/<service>.json` | 25 kB: 0.47 ms as JSON, 3.0 ms as NUON |
+
+NUON's parser costs about **6x per byte** at every size tried, which is nothing
+for a 160 B registry (81 µs against 51 µs) and is most of a keystroke's budget
+for a 195 kB spec. Both files carry a comment saying so. The rule those two bend
+is worth keeping anyway: the files a *person* opens — `.state/odata/services.nuon`,
+`.state/agent/sessions/*.nuon` — are NUON, and none of them is large.
+
+Written NUON is `to nuon --indent 2`: one key per line, so a diff shows the line
+that changed rather than the whole file, and empty or null fields are dropped
+before saving rather than stored as `{}`.
+
 ## Load order
 
 1. `<your>/config.nu` — sources the distro

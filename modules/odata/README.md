@@ -204,7 +204,7 @@ odata service remove <name>                      drops the entry and its cached 
 ```
 
 Two sources are merged: `$env.ODATA_SERVICES` from `your settings.nu`
-wins over `$nu.data-dir/.state/odata/services.json`, which `service add`
+wins over `$nu.data-dir/.state/odata/services.nuon`, which `service add`
 writes (gitignored). An entry has this shape; every field but `url` is
 optional:
 
@@ -505,7 +505,10 @@ Details worth knowing:
   with (`string int float bool datetime duration binary list record any`).
 
 The record is cached as JSON under `$nu.cache-dir/odata/<service>.json` and
-re-fetched after `ODATA_METADATA_TTL` or `odata refresh`.
+re-fetched after `ODATA_METADATA_TTL` or `odata refresh`. JSON, where the
+registry above is NUON, because this file is machine-written and on the Tab
+path: the Northwind schema is 25 kB and parses in 0.47 ms as JSON against
+3.0 ms as NUON (`docs/layout.md`, *Formats*).
 
 ## V2 and V4, side by side
 

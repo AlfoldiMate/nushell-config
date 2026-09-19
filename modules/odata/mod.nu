@@ -71,19 +71,40 @@ def memo-forget [key: string]: nothing -> nothing { ensure-memo; stor delete -t 
 
 # ── The registry ──────────────────────────────────────────────────────────────
 # Services come from $env.ODATA_SERVICES your settings.nu; closures allowed
-# for secrets) merged over $nu.data-dir/.state/odata/services.json in your own
+# for secrets) merged over $nu.data-dir/.state/odata/services.nuon in your own
 # config directory, which
 # `odata service add` writes. The current one is $env.ODATA_SERVICE.
+#
+# NUON, because this is the one file here a person opens and edits: it holds
+# the URLs and the auth they typed. It costs nothing at this size — 160 B
+# parses in 81 µs as NUON against 51 µs as JSON. The schema cache below is the
+# other way round and stays JSON.
 
 def state-dir []: nothing -> path {
   let d = ($nu.data-dir | path join .state odata)
   if not ($d | path exists) { mkdir $d }
   $d
 }
-def registry-file []: nothing -> path { state-dir | path join services.json }
+def registry-file []: nothing -> path { state-dir | path join services.nuon }
+
+# The registry was JSON until this file switched formats. It is read for as
+# long as it is there and removed by the next write, so nobody has to migrate
+# anything by hand.
+def legacy-registry-file []: nothing -> path { state-dir | path join services.json }
+
 def stored-services []: nothing -> record {
   let f = (registry-file)
-  if ($f | path exists) { open $f } else { ({}) }
+  if ($f | path exists) { return (open $f) }
+  let old = (legacy-registry-file)
+  if ($old | path exists) { open $old } else { ({}) }
+}
+
+# Indented, so a diff of this file is readable and `service add` does not
+# rewrite every line.
+def save-services [reg: record]: nothing -> nothing {
+  $reg | to nuon --indent 2 | save -f (registry-file)
+  let old = (legacy-registry-file)
+  if ($old | path exists) { rm -f $old }
 }
 def all-services []: nothing -> record { stored-services | merge (setting ODATA_SERVICES {}) }
 
@@ -127,6 +148,12 @@ def schema-file [svc: record]: nothing -> path { cache-dir | path join $"($svc.n
 
 # The parsed $metadata of a service: from the JSON cache while younger than
 # ODATA_METADATA_TTL, else fetched (about 1 s on the public services).
+#
+# JSON and not NUON, against the rule for everything else here, because this
+# file is machine-written, nobody reads it, and it is on the Tab path — the
+# entity sets, fields and navigations come out of it. Measured on the cached
+# Northwind schema (25 kB): 0.47 ms to parse as JSON, 3.0 ms as NUON. Same
+# shape at every size tried; NUON's parser costs about 6x per byte.
 def schema-for [svc: record, --refresh]: nothing -> record {
   let f = (schema-file $svc)
   let ttl = (setting ODATA_METADATA_TTL 7day)
@@ -1039,7 +1066,7 @@ export def "odata services" []: nothing -> table {
   }
 }
 
-# Register a service (persisted in .state/odata/services.json) and fetch its
+# Register a service (persisted in .state/odata/services.nuon) and fetch its
 # $metadata. Auth: --user/--password (basic) or --token (bearer); keep
 # secrets in your settings.nu as closures instead when they matter.
 export def "odata service add" [
@@ -1052,8 +1079,10 @@ export def "odata service add" [
   --no-fetch                 # register without fetching $metadata now
 ]: nothing -> record {
   let auth = (if $user != null { { type: "basic", user: $user, password: ($password | default "") } } else if $token != null { { type: "bearer", token: $token } } else { ({}) })
-  let entry = ({ url: $url, auth: $auth, params: ($param | default {}), headers: ($headers | default {}), version: $version, description: ($description | default "") } | transpose k v | where v != null | transpose -r -d)
-  stored-services | upsert $name $entry | to json | save -f (registry-file)
+  # Empty and null fields are dropped rather than stored: normalise-service
+  # defaults every one of them back, and the file is meant to be read.
+  let entry = ({ url: $url, auth: $auth, params: ($param | default {}), headers: ($headers | default {}), version: $version, description: ($description | default "") } | transpose k v | where {|r| $r.v != null and $r.v != {} and $r.v != "" } | transpose -r -d)
+  save-services (stored-services | upsert $name $entry)
   let svc = (service-of $name)
   if not $no_fetch {
     let schema = (schema-for $svc --refresh)
@@ -1064,7 +1093,7 @@ export def "odata service add" [
 
 # Forget a service and its cached $metadata.
 export def "odata service remove" [name: string@complete-service]: nothing -> nothing {
-  stored-services | reject -o $name | to json | save -f (registry-file)
+  save-services (stored-services | reject -o $name)
   let f = (cache-dir | path join $"($name).json")
   if ($f | path exists) { rm $f }
 }
