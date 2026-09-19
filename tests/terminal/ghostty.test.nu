@@ -152,7 +152,9 @@ def "test reload asks Ghostty over AppleScript on macOS and is false elsewhere" 
   }
   assert equal (ghostty reload) true
   let call = ghostty-calls $fake | where {|c| $c.0 == "osascript" } | first
-  assert ($call | str join " " | str contains 'perform action "reload_config"')
+  assert ($call | str join " " | str contains "performAction('reload_config'") "the reload is the perform action"
+  # By pid under a Ghostty shell (the suite run from one), by name elsewhere (CI).
+  assert ($call | str join " " | str contains "Application(") $"the app is addressed by pid or name — ($call)"
   touch ($fake.root | path join reload-fails)
   assert equal (ghostty reload) false
 }

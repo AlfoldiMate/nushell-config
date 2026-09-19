@@ -102,6 +102,7 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 | `theme resolve <name>` | 40 ms for a Ghostty theme, of which 31 ms is `theme palette` spawning `ghostty +list-themes` to find the file; a palette with its own `terminal` block spawns nothing |
 | `theme sync` | 44 ms: the resolve, vivid, three files written |
 | `theme use` | 320 ms: the resolve, the icon through AppKit (`rasterize.js`, 100 ms), `ghostty set` validating through `+validate-config`, the paint, `ghostty reload` through osascript, then the render |
+| `ghostty reload` finding its Ghostty | 15 ms: `ps -o ppid=,comm=` once per ancestor from the shell up to the app, five hops from a login shell |
 | reading the render at startup | 0.36 ms for `theme.nuon` (1 kB), 0.09 ms for `ls_colors` (6 kB), medians of 21 |
 | reading all 463 files | 39 ms; `(?m)` over the whole file rather than `lines` halves the parse, 49 ms against 109 ms |
 | one swatch | bit shifts rather than splitting the hex into pairs: 95 ms over all 463 against 380 ms |

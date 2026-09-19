@@ -56,8 +56,9 @@ export def nu-l [dir: record, code: string]: nothing -> record {
 # A ghostty that answers from files (tests/fixtures/ghostty/fake.nu), first
 # on PATH for the rest of the test, with a Ghostty config directory of its own
 # (XDG_CONFIG_HOME) so `ghostty set` writes there. The fake osascript beside
-# it answers `ghostty reload` and hands `-l JavaScript` (the icon rasterizer)
-# to the real one. Returns where things are; `log` holds every call.
+# it answers `ghostty reload` (JXA given with `-e`) and hands the icon
+# rasterizer (`-l JavaScript <file>`) to the real one. Returns where things
+# are; `log` holds every call.
 export def --env fake-ghostty []: nothing -> record {
   if $nu.os-info.name == "windows" { skip-test "no Ghostty on Windows" }
   let root = scratch
@@ -72,7 +73,7 @@ export def --env fake-ghostty []: nothing -> record {
 exec ($nu.current-exe | to nuon) ($fake | to nuon) "$@"
 " | save ($bin | path join ghostty)
   $"#!/bin/sh
-if [ "$1" = -l ]; then exec /usr/bin/osascript "$@"; fi
+if [ "$1" = -l ] && [ "$3" != -e ]; then exec /usr/bin/osascript "$@"; fi
 exec ($nu.current-exe | to nuon) ($fake | to nuon) osascript "$@"
 " | save ($bin | path join osascript)
   ^chmod +x ($bin | path join ghostty) ($bin | path join osascript)

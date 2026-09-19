@@ -228,10 +228,35 @@ export def "ghostty shell" [
 # windows already open. True when Ghostty did it; false when it is not running
 # or this is not macOS (Linux has no equivalent yet), and the caller falls
 # back to the OSC repaint. Verified with Ghostty 1.3.1, 2026-09-19.
+#
+# The app is addressed by pid, not by name. A child of a Ghostty shell that
+# checks in with LaunchServices — `screencapture -v`, ffmpeg's screen capture,
+# an osascript sitting in a `tell` block — is listed *as* Ghostty (same bundle
+# id, the shell's responsible process) for as long as it runs, and `tell
+# application "Ghostty"` then resolves to it: every window lookup fails with
+# -1728 and the reload silently reports false. JXA's `Application(pid)` cannot
+# be hijacked. The pid is the shell's own ancestor, 15 ms of `ps` hops; the
+# name is the fallback for a shell Ghostty did not start (ssh, a test).
+# Seen on macOS 27.2 with Ghostty 1.3.1, 2026-09-19.
 export def "ghostty reload" []: nothing -> bool {
   if $nu.os-info.name != "macos" { return false }
-  let r = (^osascript -e 'tell application "Ghostty" to perform action "reload_config" on (first terminal of first tab of first window)' | complete)
+  let app = (match (ghostty-pid) { null => 'Application("Ghostty")', $p => $"Application\(($p))" })
+  let r = (^osascript -l JavaScript -e $"($app).performAction\('reload_config', {on: ($app).windows[0].terminals[0]})" | complete)
   $r.exit_code == 0 and ($r.stdout | str trim) == "true"
+}
+
+# The Ghostty this shell runs in: the nearest ancestor that is Ghostty itself,
+# or null when no ancestor is (then the shell was not started by Ghostty).
+def ghostty-pid []: nothing -> any {
+  mut pid = $nu.pid
+  for _ in 0..16 {
+    let row = (^ps -o ppid=,comm= -p $pid | str trim | split row -r '\s+' -n 2)
+    if ($row | length) < 2 { return null }
+    if ($row.1 | path basename) == "ghostty" { return $pid }
+    $pid = ($row.0 | into int)
+    if $pid <= 1 { return null }
+  }
+  null
 }
 
 # ── internals ─────────────────────────────────────────────────────────────────

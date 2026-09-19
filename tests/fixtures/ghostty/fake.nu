@@ -144,8 +144,8 @@ def validate [root: path, args: list<string>] {
   exit 1
 }
 
-# `ghostty reload` runs `osascript -e 'tell application "Ghostty" …'` and
-# reads "true" from it; the wrapper sends everything but `-l JavaScript` here.
+# `ghostty reload` runs `osascript -l JavaScript -e 'Application(…).performAction…'`
+# and reads "true" from it; the wrapper sends every `-e` script here.
 def osascript [root: path] {
   print (if ($root | path join reload-fails | path exists) { "false" } else { "true" })
 }

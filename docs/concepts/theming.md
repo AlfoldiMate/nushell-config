@@ -181,6 +181,19 @@ than only new ones. macOS only (`macos-applescript`, default on); the OSC
 repaint stays for the preview and for everything else. Verified with Ghostty
 1.3.1 on 2026-09-19.
 
+Not by that name, though. A process a Ghostty shell starts is Ghostty's
+responsibility, and when it checks in with LaunchServices — `screencapture
+-v` recording the screen, ffmpeg capturing it, an `osascript` sitting in a
+`tell` block — LaunchServices lists it *as* Ghostty, same bundle id, for as
+long as it runs. `tell application "Ghostty"` then resolves to the impostor,
+every window lookup fails with `-1728` and the reload reports false while
+the theme silently falls back to the OSC repaint: no icon, no font. So
+`ghostty reload` walks `ps` up from `$nu.pid` to the Ghostty that started
+the shell (15 ms) and addresses it through JXA's `Application(<pid>)`,
+which nothing can hijack; the name is only the fallback for a shell Ghostty
+did not start. Found while a screen recording was driving a demo, macOS
+27.2, 2026-09-19.
+
 ### It does not repaint as you arrow through the list
 
 `input list` cannot call back on cursor movement, and the alternative — driving
