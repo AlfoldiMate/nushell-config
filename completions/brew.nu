@@ -206,7 +206,8 @@ def installed [kind: string]: nothing -> list<record> {
 def taps []: nothing -> list<record> {
   let dir = (prefix | path join Library Taps)
   if not ($dir | path exists) { return [] }
-  glob $"($dir)/*/*" | each {|p| { value: ($p | path relative-to $dir | str replace "homebrew-" "") } }
+  # Sorted: `glob` returns directory order, which differs by file system.
+  glob $"($dir)/*/*" | sort | each {|p| { value: ($p | path relative-to $dir | str replace "homebrew-" "") } }
 }
 
 # ── The spec with its sources, as the engine wants it ─────────────────────────

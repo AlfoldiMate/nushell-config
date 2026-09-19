@@ -34,10 +34,11 @@ def main [
   --verbose (-v)      # print every file's output, not only a failing one's
   --dir: string       # the directory to search instead of tests/ (the harness's own test)
 ] {
-  let tests = $dir | default $TESTS | path expand
-  # Forward slashes: a backslash is an escape in a glob, so `path join` on
-  # Windows would make a pattern that fails to parse.
-  let files = glob (($tests | str replace -a '\\' '/') + "/**/*.test.nu") --exclude ["**/fixtures/**"] | sort
+  # Forward slashes throughout: a backslash is an escape in a glob, so the
+  # pattern `path join` makes on Windows fails to parse, and `glob` answers
+  # with forward slashes, which `path relative-to` then has to match.
+  let tests = $dir | default $TESTS | path expand | str replace -a '\' '/'
+  let files = glob ($tests + "/**/*.test.nu") --exclude ["**/fixtures/**"] | sort
   let scratch = mktemp -d --tmpdir-path $nu.temp-dir "nu-tests.XXXXXX"
   # Every child shell gets XDG directories under the scratch, so $nu.data-dir,
   # $nu.cache-dir and the config dir are the run's own and a test that writes
@@ -120,7 +121,7 @@ def run-file [file: string, tests: string, pattern: any, child_env: record, verb
   # One `try` per test, generated: a command cannot be called by a name held
   # in a variable, so the script names each one. The verdict goes to a file,
   # leaving stdout to the tests.
-  let out = $child_env.TEST_SCRATCH | path join $"($label | str replace -a '/' '_').nuon"
+  let out = $child_env.TEST_SCRATCH | path join $"($label | str replace -ra '[/\\]' '_').nuon"
   let steps = $names | each {|name|
     let n = $name | to nuon
     [
