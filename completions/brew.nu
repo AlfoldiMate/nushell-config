@@ -120,8 +120,10 @@ export def "nu-complete brew spec-data" []: nothing -> record {
 
 # ── Package list: Homebrew's API payload → SQLite ─────────────────────────────
 
+# `glob` patterns are forward-slashed: a backslash is an escape in one, so a
+# Windows path breaks the pattern (the tests run this fixture there).
 def payload-file []: nothing -> any {
-  glob ($"(api-dir)/internal/packages.*.jws.json.payload") | get -o 0
+  glob ((api-dir | str replace -a '\' '/') + "/internal/packages.*.jws.json.payload") | get -o 0
 }
 
 def db-file []: nothing -> path { nu-complete cache-dir | path join brew-packages.db }
@@ -207,7 +209,8 @@ def taps []: nothing -> list<record> {
   let dir = (prefix | path join Library Taps)
   if not ($dir | path exists) { return [] }
   # Sorted: `glob` returns directory order, which differs by file system.
-  glob $"($dir)/*/*" | sort | each {|p| { value: ($p | path relative-to $dir | str replace "homebrew-" "") } }
+  let dir = $dir | str replace -a '\' '/'
+  glob ($dir + "/*/*") | sort | each {|p| { value: ($p | path relative-to $dir | str replace "homebrew-" "") } }
 }
 
 # ── The spec with its sources, as the engine wants it ─────────────────────────

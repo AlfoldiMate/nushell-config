@@ -227,7 +227,8 @@ def install-from-archive [f: record]: nothing -> nothing {
     let wanted = ($FACES | each {|face| $"($f.stem)-($face).ttf" })
     # Nerd Fonts archives are flat today, but a glob costs nothing and a
     # subdirectory tomorrow would otherwise look like "naming has changed".
-    let found = (glob ($tmp | path join "**" "*.ttf") | where {|p| ($p | path basename) in $wanted })
+    # Forward slashes: a backslash is an escape in a glob pattern.
+    let found = (glob (($tmp | str replace -a '\' '/') + "/**/*.ttf") | where {|p| ($p | path basename) in $wanted })
     if ($found | is-empty) {
       error make { msg: $"($f.asset).($ext) holds no ($f.stem)-*.ttf — the Nerd Fonts naming may have changed" }
     }

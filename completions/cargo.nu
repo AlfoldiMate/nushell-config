@@ -133,6 +133,8 @@ def crate-names []: nothing -> list<string> {
   nu-complete cache "cargo:crates" 1day {
     let reg = ($env.CARGO_HOME? | default ($nu.home-dir | path join .cargo) | path join registry)
     if not ($reg | path exists) { return [] }
+    # Forward slashes: a backslash is an escape in a glob pattern.
+    let reg = ($reg | str replace -a '\' '/')
     let cached = (glob $"($reg)/cache/*/*.crate" | path basename | str replace --regex '-[0-9][^-]*\.crate$' '')
     let indexed = (glob $"($reg)/index/*/.cache/**/*" --no-dir | path basename)
     $cached ++ $indexed | uniq | sort
