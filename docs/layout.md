@@ -123,7 +123,7 @@ is worth keeping anyway: the files a *person* opens — `.state/odata/services.n
 `.state/agent/sessions/*.nuon` — are NUON, and none of them is large.
 
 Files rendered for another tool are in that tool's format, and are read only by
-it: `.state/theme/starship.toml` and `.state/theme/ls_colors` (`theme use`),
+it: `.state/theme/starship.toml`, `ls_colors`, `ghostty/<slug>` and `icons/*.png` (`theme use`),
 `vendor/autoload/*.nu` (`nu-config tools setup`).
 
 Written NUON is `to nuon --indent 2`: one key per line, so a diff shows the line
@@ -164,7 +164,7 @@ editing it is the whole override mechanism.
 | 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
 | 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
 | 3. Terminal | is Ghostty installed, are you *running* in it, the install line if not — and whether a new window starts Nushell (the one question whose default is yes) |
-| 4. Theme | one of Ghostty's 463, previewed by painting the live terminal, then rendered for tables, `ls`, bat and the prompt |
+| 4. Theme | one of a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal, then written to Ghostty with its icon and rendered for tables, `ls`, bat and the prompt |
 | 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
 | 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |
 | 7. The plan | every line that will be written, then one yes |

@@ -3,8 +3,10 @@
 #
 # A palette file is tier three of theme resolution: it names the shaded roles
 # exactly instead of blending them from the theme's background and foreground.
-# The sixteen are still the terminal's — a role like `red` is never overridden
-# here — so what this adds is the greys, the surfaces and the hues ANSI lacks.
+# This one has no `terminal` block of its own: `ghostty` names the theme whose
+# file supplies the sixteen, and the sixteen stay the terminal's — a role like
+# `red` is never overridden here — so what this adds is the greys, the surfaces
+# and the hues ANSI lacks.
 # README.md has the role list; `colours` may hold any names, and a role may be
 # one of them or a colour of its own.
 #
@@ -12,6 +14,8 @@
 # Catppuccin themes use, which is why those two are named here rather than
 # rendered from the roles.
 {
+  name: "Catppuccin Macchiato"
+  ghostty: "Catppuccin Macchiato"     # the Ghostty theme this palette extends: its sixteen are the terminal's
   bat: "Catppuccin Macchiato"
   vivid: "catppuccin-macchiato"
   dark: true

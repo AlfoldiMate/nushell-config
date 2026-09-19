@@ -173,23 +173,25 @@ completer still answers first; the engine adds what needs more context:
 
 ## Theming
 
-There is one theme and it is the terminal's. `theme use` writes Ghostty's
-configuration, repaints the window you are in, and renders the shell's own
-colours — tables, `ls`, `bat`, the starship prompt — from the same palette, so
-all of it follows now and in every shell after:
+There is one theme and everything follows it. `theme use` hands Ghostty a
+theme and a matching app icon, repaints the window you are in (and reloads
+every open one), and renders the shell's own colours — tables, `ls`, `bat`,
+the starship prompt — from the same palette, now and in every shell after:
 
 ```nu
-theme                        # scroll Ghostty's 463 themes; the live window is the preview
-theme use "Catppuccin Mocha" # by name, no picker
+theme                        # scroll a hundred palettes — NvChad's 96 and Catppuccin; the live window is the preview
+theme --ghostty              # or Ghostty's own 463
+theme use tokyonight         # by name, no picker
 theme roles                  # what the shell made of it: each role, its colour, which tier
-theme list                   # every theme, with its sixteen colours
 theme reset                  # the terminal back to what Ghostty had before
 ```
 
 The shell's colours are written in **roles** (`fg_muted`, `border`, `accent`,
 `orange`, the sixteen) and resolved in tiers: the terminal's sixteen by ANSI
 name, always; shades blended from the theme's own hexes, for any theme; and a
-palette file naming them exactly, shipped for Catppuccin. No `THEME` knob —
+palette file naming them exactly — NvChad's thirty UI colours map onto the
+roles almost one to one, which is why they were imported. The icon is rendered
+from the same six colours, so no icon files are shipped. No `THEME` knob —
 what was rendered last is the theme. `themes/README.md` is the guide, and how
 to add a palette or change a template.
 

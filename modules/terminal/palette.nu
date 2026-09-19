@@ -1,15 +1,20 @@
 # palette — one palette, resolved in tiers, rendered for every tool
 #
+#   theme                  the picker: the shipped palettes (--ghostty: Ghostty's own 463)
+#   theme list             the palettes, with swatches (--ghostty: Ghostty's list)
+#   theme use <name>       terminal, icon, shell colours — now, and persistently
+#   theme preview <name>   paint this session only
 #   theme sync             re-resolve the current theme and re-render every file
 #   theme roles [name]     the resolved roles, as a table, with where each came from
 #   theme status           what is rendered, from which theme, at which tier
+#   theme icon [--off]     the Ghostty app icon for the current theme, or none
 #
 # A theme is a palette RECORD, and every tool's colours are rendered from it.
-# Nobody writes a Nushell theme, a starship palette or a vivid theme by hand:
-# themes/nushell.nu, themes/starship.toml and themes/vivid.yml are written
-# against a small role vocabulary — fg_muted, border, accent, orange, … — and
-# this file decides what each role IS for the theme in use. Three tiers, each
-# only filling in what the one before could not say:
+# Nobody writes a Nushell theme, a starship palette, a vivid theme or an app
+# icon per theme: themes/nushell.nu, starship.toml, vivid.yml and icon.svg are
+# written against a small role vocabulary — fg_muted, border, accent, orange,
+# … — and this file decides what each role IS for the theme in use. Three
+# tiers, each only filling in what the one before could not say:
 #
 #   1  ansi     themes/palettes/ansi.nuon: every role an ANSI NAME. The sixteen
 #               are the terminal's own, so `red` is whatever the terminal paints
@@ -17,25 +22,36 @@
 #               keeps the shell right when the palette changes under it (SSH,
 #               tmux, a hand-edited Ghostty config). What ANSI cannot say —
 #               a muted grey, a border, an orange — is approximated.
-#   2  derived  the Ghostty theme file gives the sixteen, background and
-#               foreground as hex, so the shaded roles are BLENDED from them:
-#               fg_muted is fg pulled halfway to bg, border is bg pushed a
-#               quarter of the way to fg, orange is red mixed with yellow. Hex,
-#               but only for roles ANSI has no word for. Every one of Ghostty's
-#               463 themes gets this.
-#   3  palette  themes/palettes/<slug>.nuon names the shaded roles exactly —
-#               Catppuccin's overlay1, surface1, peach — and can name a bat and
+#   2  derived  the sixteen, background and foreground as hex — from the
+#               palette's own `terminal` block or from Ghostty's theme file —
+#               so the shaded roles are BLENDED: fg_muted is fg pulled halfway
+#               to bg, border is bg pushed a quarter of the way to fg, orange
+#               is red mixed with yellow. Hex, but only for roles ANSI has no
+#               word for. Every one of Ghostty's 463 gets this.
+#   3  palette  a palette file names the shaded roles exactly — Catppuccin's
+#               overlay1, NvChad's grey_fg and one_bg2 — and can name a bat and
 #               a vivid theme that already match.
 #
-# `theme use` resolves and renders; the result is three files under
-# <your dir>/.state/theme/, which conf/theme.nu and conf/prompt.nu read at
-# startup. Rendered, not resolved at every start: theme.nuon is 1 kB and opens
-# in 0.36 ms (median of 21), a resolve is 40 ms because `theme palette` spawns
-# Ghostty to find the theme file, and a render on top runs vivid:
+# Two kinds of palette file, told apart by their keys:
 #
-#   theme.nuon      the roles, plus the theme name, tier and the bat theme
-#   starship.toml   themes/starship.toml with [palettes.distro] filled in
-#   ls_colors       vivid's output for the theme, a raw string
+#   terminal:   the palette IS a terminal theme: its own sixteen, background,
+#               foreground, cursor and selection. Ghostty is handed it as a
+#               file (`theme = <absolute path>` is accepted) written under the
+#               state dir. NvChad's 96 (themes/palettes/nvchad/) are these.
+#   ghostty:    the palette EXTENDS a theme Ghostty ships: that file supplies
+#               the sixteen. The four Catppuccins are these.
+#
+# `theme use` resolves and renders; the result is under <your dir>/.state/
+# theme/, which conf/theme.nu and conf/prompt.nu read at startup. Rendered,
+# not resolved at every start: theme.nuon is 1 kB and opens in 0.36 ms (median
+# of 21), a resolve is 40 ms because `theme palette` spawns Ghostty to find a
+# theme file, and a render on top runs vivid and rasterizes the icon:
+#
+#   theme.nuon        the roles, plus the theme name, tier and the bat theme
+#   starship.toml     themes/starship.toml with [palettes.distro] filled in
+#   ls_colors         vivid's output for the theme, a raw string
+#   ghostty/<slug>    the Ghostty theme file, for a palette with a `terminal` block
+#   icons/<slug>.png  the app icon (macOS)
 #
 # Nothing here reads state at parse time: the module is lazy and the paths
 # are `$nu.data-dir`, which is the user's directory.
@@ -72,22 +88,29 @@ const DERIVED = {
   on_accent:  { mix: [bg fg 0.0] }
 }
 
-# Ghostty's palette index for each of the sixteen roles, and the two named
-# colours; what tier two blends from.
+# Ghostty's palette index for each of the sixteen roles; what tier two blends
+# from, and how a palette's `terminal` block becomes a Ghostty theme file.
 const SIXTEEN = {
   black: 0, red: 1, green: 2, yellow: 3, blue: 4, magenta: 5, cyan: 6, white: 7
   bright_black: 8, bright_red: 9, bright_green: 10, bright_yellow: 11
   bright_blue: 12, bright_magenta: 13, bright_cyan: 14, bright_white: 15
 }
 
-# ── Where the rendered files live ─────────────────────────────────────────────
+# A palette's `terminal` keys → the named colours a Ghostty theme file has.
+const NAMED = {
+  background: background, foreground: foreground, cursor: cursor-color
+  selection_background: selection-background, selection_foreground: selection-foreground
+}
+
+# The icon's six placeholders, and the role each one is. Where a role is an
+# ANSI name rather than a hex (tiers one and two), the terminal's own hex for
+# that colour is used instead.
+const ICON_ROLES = { bg: bg, fg: fg, err: red, accent: blue, ok: green, warn: yellow }
+
+# ── Where things live ─────────────────────────────────────────────────────────
 
 export def "theme state-dir" []: nothing -> path {
   $nu.data-dir | path join .state theme
-}
-
-def user-palettes []: nothing -> path {
-  $nu.config-path | path dirname | path join themes palettes
 }
 
 # "Catppuccin Macchiato" → catppuccin-macchiato: the file name a palette has.
@@ -95,12 +118,27 @@ export def "theme slug" [name: string]: nothing -> string {
   $name | str lowercase | str replace -ra '[^a-z0-9]+' '-' | str trim -c '-'
 }
 
-# The palette file for a theme name, the user's directory first, or null.
+# Where palettes are looked for, first match wins: yours, the hand-made
+# shipped ones, then the NvChad import.
+def palette-dirs []: nothing -> list<path> {
+  [
+    ($nu.config-path | path dirname | path join themes palettes)
+    $SHIPPED_PALETTES
+    ($SHIPPED_PALETTES | path join nvchad)
+  ]
+}
+
+# The palette file for a name, or null. The contract is that a file's stem is
+# the slug of its `name`, so this is a path check, not a hundred `open`s.
 def palette-file [name: string]: nothing -> any {
   let f = $"(theme slug $name).nuon"
-  [(user-palettes | path join $f) ($SHIPPED_PALETTES | path join $f)]
-  | where {|p| $p | path exists }
-  | get -o 0
+  palette-dirs | each {|d| $d | path join $f } | where {|p| ($p | path exists) and ($f != "ansi.nuon") } | get -o 0
+}
+
+# A template: the user's copy in their themes/ when there is one, else the shipped one.
+def template-for [file: string]: nothing -> path {
+  let user = ($nu.config-path | path dirname | path join themes $file)
+  if ($user | path exists) { $user } else { $DISTRO_ROOT | path join themes $file }
 }
 
 # ── Colour arithmetic ─────────────────────────────────────────────────────────
@@ -130,6 +168,52 @@ def as-record []: list<record> -> record {
   reduce -f {} {|it, acc| $acc | merge $it }
 }
 
+# ── The palettes ──────────────────────────────────────────────────────────────
+
+# Every palette file there is: yours, the shipped ones, NvChad's. A hundred
+# `open`s, 30 ms; only `theme list` and `theme names` pay it.
+export def "theme palettes" []: nothing -> table<name: string, dark: bool, kind: string, ghostty: any, file: path> {
+  palette-dirs
+  | each {|d|
+      let kind = (if $d == $SHIPPED_PALETTES { "shipped" } else if ($d | path basename) == "nvchad" { "nvchad" } else { "yours" })
+      if not ($d | path exists) { return [] }
+      ls $d | where name =~ '\.nuon$' and name !~ 'ansi\.nuon$' | each {|f|
+        let p = (open $f.name)
+        { name: ($p | get -o name | default ($f.name | path basename | str replace ".nuon" "")), dark: ($p | get -o dark | default true), kind: $kind, ghostty: ($p | get -o ghostty), file: $f.name }
+      }
+    }
+  | flatten
+  | uniq-by name
+}
+
+# What every `<name>` argument completes from: the palettes, then Ghostty's.
+export def "theme names" []: nothing -> list<string> {
+  (theme palettes | get name) ++ (try { ghostty names } catch { [] }) | uniq
+}
+
+# The themes to choose from: the palettes, or Ghostty's own with --ghostty.
+export def "theme list" [
+  --ghostty    # Ghostty's 463 instead of the palettes
+  --swatches   # add the sixteen as a column
+]: nothing -> table {
+  if $ghostty { return (ghostty themes --swatches=$swatches) }
+  let rows = (theme palettes | rename theme)
+  if not $swatches { return $rows }
+  # A palette with a `terminal` block carries its sixteen; one that extends a
+  # Ghostty theme is read from Ghostty's file, found through one listing.
+  let files = (try { ghostty themes } catch { [] })
+  $rows | insert colours {|r|
+    let p = (open $r.file)
+    let hexes = if ($p | get -o terminal) != null {
+      $SIXTEEN | items {|k, i| $p.terminal | get $k }
+    } else {
+      let f = ($files | where theme == ($p | get -o ghostty | default "") | get -o 0.path)
+      if $f == null { [] } else { theme read $f $p.ghostty | get palette | transpose i hex | sort-by {|x| $x.i | into int } | get hex }
+    }
+    theme swatch $hexes
+  }
+}
+
 # ── Resolving ─────────────────────────────────────────────────────────────────
 
 # Tier one, as shipped: the file, not a copy of it, so there is one list of roles.
@@ -137,44 +221,77 @@ def ansi-palette []: nothing -> record {
   open ($SHIPPED_PALETTES | path join ansi.nuon)
 }
 
+# A palette's `terminal` block in the shape `theme palette` returns for a
+# Ghostty file: `palette` 0-15 and `named`.
+def terminal-record [name: string, t: record]: nothing -> record {
+  {
+    theme: $name
+    palette: ($SIXTEEN | items {|k, i| { ($i | into string): ($t | get $k) } } | as-record)
+    named: ($NAMED | items {|k, g| let v = ($t | get -o $k); if $v == null { {} } else { { $g: $v } } } | as-record)
+  }
+}
+
 # The resolved theme for a name: the roles and everything the render needs.
 # `null` is "no theme chosen", which is tier one and nothing else.
 #
-#   name      the Ghostty theme, or null
+#   name      the theme's name
+#   by        palette | ghostty — how the name was matched
 #   tier      ansi | derived | palette
 #   palette   the palette file used, or null
+#   terminal  the sixteen and named colours as `theme palette` returns them, or null
+#   ghostty   what Ghostty's `theme =` gets: a theme name, or "file" for a palette's own block
 #   bat       a theme bat ships
 #   vivid     a theme vivid ships, or null to render themes/vivid.yml
+#   dark      whether the background is dark
 #   roles     role → Nushell colour (an ANSI name or a hex)
 #   source    role → which tier decided it, for `theme roles`
-export def "theme resolve" [name?: string]: nothing -> record {
+export def "theme resolve" [
+  name?: string
+  --ghostty   # the name is one of Ghostty's; a palette applies only if it says it extends that theme
+]: nothing -> record {
   let base = (ansi-palette)
   mut roles = $base.roles
   mut source = ($roles | items {|k, v| { $k: "ansi" } } | as-record)
-  mut r: record = { name: $name, tier: "ansi", palette: null, bat: $base.bat, vivid: null }
+  mut r: record = { name: $name, by: "ghostty", tier: "ansi", palette: null, terminal: null, ghostty: $name, bat: $base.bat, vivid: null, dark: true }
   if $name == null { return ($r | merge { roles: $roles, source: $source }) }
 
-  # Tier two: Ghostty's theme file, when Ghostty has one by that name. Without
-  # Ghostty (a Linux box, SSH) the name is kept and the roles stay ANSI.
-  let ghostty = (try { theme palette $name } catch { null })
-  if $ghostty != null and ($ghostty.palette | columns | length) == 16 {
-    let hexes = (
-      $SIXTEEN | items {|role, i| { $role: ($ghostty.palette | get ($i | into string)) } } | as-record
-      | merge { bg: ($ghostty.named | get -o background | default ($ghostty.palette | get "0")) }
-      | merge { fg: ($ghostty.named | get -o foreground | default ($ghostty.palette | get "7")) }
-    )
+  # Which palette, if any.
+  let pf = (palette-file $name)
+  let p = (if $pf == null { null } else { open $pf })
+  let p = (if $ghostty and $p != null and ($p | get -o ghostty) != $name { null } else { $p })
+
+  # The sixteen as hex: the palette's own, or Ghostty's file for the theme
+  # the palette extends (or the name itself). Without Ghostty (a Linux box,
+  # SSH) a Ghostty name resolves at tier one.
+  let ghostty_name = (if $p != null { $p | get -o ghostty | default $name } else { $name })
+  let term = (
+    if $p != null and ($p | get -o terminal) != null { terminal-record $name $p.terminal }
+    else { try { theme palette $ghostty_name } catch { null } }
+  )
+  if $p == null and $term == null {
+    error make { msg: $"no theme called '($name)': not a palette \(`theme list`\) and not one of Ghostty's \(`theme list --ghostty`\)", label: { text: "unknown theme", span: (metadata $name).span } }
+  }
+  $r = ($r | merge {
+    name: (if $p != null { $p | get -o name | default $name } else { $name })
+    by: (if $p != null { "palette" } else { "ghostty" })
+    terminal: $term
+    ghostty: (if $p != null and ($p | get -o terminal) != null { "file" } else { $ghostty_name })
+  })
+
+  # Tier two: blend the shaded roles from the hexes.
+  if $term != null and ($term.palette | columns | length) == 16 {
+    let hexes = (term-hexes $term)
     for d in ($DERIVED | transpose role rule) {
       $roles = ($roles | upsert $d.role (mix ($hexes | get $d.rule.mix.0) ($hexes | get $d.rule.mix.1) $d.rule.mix.2))
       $source = ($source | upsert $d.role "derived")
     }
     $r.tier = "derived"
+    $r.dark = (is-dark $hexes.bg)
   }
 
-  # Tier three: a palette file. A role may name one of the palette's colours
-  # or carry a colour of its own.
-  let pf = (palette-file $name)
-  if $pf != null {
-    let p = (open $pf)
+  # Tier three: the palette's roles. A role may name one of the palette's
+  # colours or carry a colour of its own.
+  if $p != null {
     let colours = ($p | get -o colours | default {})
     for role in ($p | get -o roles | default {} | transpose k v) {
       let v = ($colours | get -o $role.v | default $role.v)
@@ -186,9 +303,24 @@ export def "theme resolve" [name?: string]: nothing -> record {
       palette: $pf
       bat: ($p | get -o bat | default $base.bat)
       vivid: ($p | get -o vivid)
+      dark: ($p | get -o dark | default $r.dark)
     })
   }
   $r | merge { roles: $roles, source: $source }
+}
+
+# The sixteen, bg and fg as hex out of a `theme palette` record.
+def term-hexes [term: record]: nothing -> record {
+  $SIXTEEN | items {|role, i| { $role: ($term.palette | get ($i | into string)) } } | as-record
+  | merge { bg: ($term.named | get -o background | default ($term.palette | get "0")) }
+  | merge { fg: ($term.named | get -o foreground | default ($term.palette | get "7")) }
+}
+
+# Perceived luminance below the midpoint. Rec. 601 weights, good enough to
+# tell a light background from a dark one.
+def is-dark [hex: string]: nothing -> bool {
+  let c = (hex-rgb $hex)
+  (($c.0 * 299) + ($c.1 * 587) + ($c.2 * 114)) / 1000 < 128
 }
 
 # ── Rendering ─────────────────────────────────────────────────────────────────
@@ -227,12 +359,6 @@ export def "theme starship-palette" [roles: record]: nothing -> record {
   $roles | items {|k, v| let s = (to-starship $v); if $s == null { {} } else { { $k: $s } } } | as-record
 }
 
-# A template: the user's copy in their themes/ when there is one, else the shipped one.
-def template-for [file: string]: nothing -> path {
-  let user = ($nu.config-path | path dirname | path join themes $file)
-  if ($user | path exists) { $user } else { $DISTRO_ROOT | path join themes $file }
-}
-
 # The template with the palette filled in. Through `from toml`/`to toml`
 # rather than text: the block is replaced whole and the file stays valid
 # whatever the template's author did with whitespace. Comments do not survive
@@ -262,30 +388,69 @@ def render-ls-colors [t: record]: nothing -> any {
   ^vivid generate $f | str trim
 }
 
+# The app icon: themes/icon.svg with its six roles filled in, rasterized by
+# macOS's own `qlmanage` (QuickLook renders SVG through WebKit — the one
+# SVG rasterizer a stock Mac has; `sips` cannot read SVG). Ghostty takes the
+# PNG as `macos-custom-icon`. The file is named by the theme, not `icon.png`,
+# so the path in Ghostty's config changes with the theme and a reload sees a
+# change. Null off macOS, without a terminal record, or when qlmanage fails.
+def render-icon [t: record]: nothing -> any {
+  if $nu.os-info.name != "macos" or $t.terminal == null or (which qlmanage | is-empty) { return null }
+  let hexes = (term-hexes $t.terminal)
+  let svg = (
+    $ICON_ROLES | transpose ph role | reduce -f (open --raw (template-for icon.svg)) {|it, acc|
+      let v = ($t.roles | get $it.ph)
+      $acc | str replace -a $"{{($it.ph)}}" (if (is-hex $v) { $v } else { $hexes | get $it.role })
+    }
+  )
+  let dir = (theme state-dir | path join icons)
+  mkdir $dir
+  let stem = (theme slug $t.name)
+  let svg_file = ($dir | path join $"($stem).svg")
+  $svg | save -f $svg_file
+  # qlmanage names its output <input>.png in the directory given.
+  let r = (^qlmanage -t -s 1024 -o $dir $svg_file | complete)
+  let out = ($dir | path join $"($stem).svg.png")
+  if $r.exit_code != 0 or not ($out | path exists) { return null }
+  let png = ($dir | path join $"($stem).png")
+  mv -f $out $png
+  rm -f $svg_file
+  $png
+}
+
+# Ghostty's `theme =` value for a resolved theme, writing the theme file when
+# the palette carries its own sixteen.
+def ghostty-theme-value [t: record]: nothing -> string {
+  if $t.ghostty != "file" { return $t.ghostty }
+  let dir = (theme state-dir | path join ghostty)
+  mkdir $dir
+  let f = ($dir | path join (theme slug $t.name))
+  theme ghostty-file $t.terminal | save -f $f
+  $f
+}
+
 # Resolve a theme and write every rendered file. The name defaults to the one
 # rendered last time, so `theme sync` after a `git pull` picks up a changed
 # template; `--none` renders the ANSI tier and forgets the name.
 export def --env "theme sync" [
   name?: string
-  --none   # no theme: tier one, and the state says so
+  --ghostty   # the name is one of Ghostty's (kept from the last `theme use` when omitted)
+  --none      # no theme: tier one, and the state says so
   --quiet (-q)
 ]: nothing -> record {
-  let name = if $none { null } else { $name | default (current-name) }
-  # A name has to be a theme Ghostty knows or a palette file; without Ghostty
-  # (`theme names` errors) any name is taken, and resolves at tier one.
-  if $name != null {
-    let known = (try { theme names } catch { null })
-    if $known != null and $name not-in $known and (palette-file $name) == null {
-      error make { msg: $"Ghostty has no theme called '($name)' and there is no palette file for it", label: { text: "not a theme", span: (metadata $name).span } }
-    }
-  }
-  let t = (theme resolve $name)
+  let cur = (theme current | default {})
+  let name = if $none { null } else { $name | default ($cur | get -o name) }
+  let by_ghostty = (if $name == null { false } else if $ghostty { true } else if ($cur | get -o name) == $name { ($cur | get -o by) == "ghostty" } else { false })
+  let t = (theme resolve $name --ghostty=$by_ghostty)
+  render $t --quiet=$quiet
+}
+
+def --env render [t: record, --quiet]: nothing -> record {
   let dir = (theme state-dir)
   mkdir $dir
-
   let ls_colors = (render-ls-colors $t)
   let state = (
-    $t | reject source
+    $t | reject source terminal
     | merge { rendered: (date now), ls_colors: ($ls_colors != null) }
   )
   $state | to nuon --indent 2 | save -f ($dir | path join theme.nuon)
@@ -317,20 +482,41 @@ export def --env "theme apply" [state: record]: nothing -> nothing {
 
 # ── Choosing one ──────────────────────────────────────────────────────────────
 
-# Keep a theme: Ghostty's config for every window from now on, OSC for this
-# one, and the shell's own colours — tables, `ls`, bat, the prompt — rendered
-# from it, for this session and every one after.
-export def --env "theme use" [name: string@"theme names"]: nothing -> nothing {
-  theme palette $name | ignore       # a wrong name fails here, before anything is written
-  ghostty set { theme: $name }
-  if (is-terminal --stdout) { theme preview $name }
-  theme sync $name --quiet
-  let s = (theme current)
-  print $"theme is ($name) — this window now, new windows from Ghostty's config; shell colours at tier ($s.tier)"
+# Paint this session with a theme and change nothing on disk.
+export def "theme preview" [
+  name: string@"theme names"
+  --ghostty   # one of Ghostty's, not a palette
+]: nothing -> nothing {
+  let t = (theme resolve $name --ghostty=$ghostty)
+  if $t.terminal == null { error make { msg: $"($name) has no colours to paint here: Ghostty is not installed and the palette has no terminal block" } }
+  theme paint $t.terminal
 }
 
-# The picker. `input list --fuzzy` does the searching over all 463 at once, with
-# each theme's own sixteen colours beside its name.
+# Keep a theme: Ghostty's config for every window from now on, the app icon
+# to match, this window painted (and every open one reloaded, on macOS), and
+# the shell's own colours — tables, `ls`, bat, the prompt — rendered from it,
+# for this session and every one after.
+export def --env "theme use" [
+  name: string@"theme names"
+  --ghostty   # one of Ghostty's 463, not a palette (`theme list --ghostty`)
+  --no-icon   # leave the app icon alone
+]: nothing -> nothing {
+  let t = (theme resolve $name --ghostty=$ghostty)   # a wrong name fails here, before anything is written
+  let icon = (if $no_icon { null } else { render-icon $t })
+  ghostty set (
+    { theme: (ghostty-theme-value $t) }
+    | merge (if $icon == null { {} } else { { macos-icon: "custom", macos-custom-icon: $icon } })
+  )
+  if $t.terminal != null and (is-terminal --stdout) { theme paint $t.terminal }
+  let reloaded = (ghostty reload)
+  render $t --quiet
+  let windows = (if $reloaded { "every open window and new ones" } else { "this window now, new windows from Ghostty's config" })
+  let icon_note = (if $icon == null { "" } else { ", icon rendered" })
+  print $"theme is ($t.name) — ($windows)($icon_note); shell colours at tier ($t.tier)"
+}
+
+# The picker. `input list --fuzzy` does the searching over all of them at once,
+# with each theme's own sixteen colours beside its name.
 #
 # Why it does not repaint as you arrow through the list: `input list` cannot call
 # back on cursor movement, and the alternative — driving `input listen` and
@@ -339,12 +525,14 @@ export def --env "theme use" [name: string@"theme names"]: nothing -> nothing {
 # cancelled list leaves the terminal exactly as it was. The theme is applied once
 # you pick it, and the keep/discard question is one you answer looking at it.
 # `export def theme`, not `main`: main here would be a command called `palette`.
-export def --env theme []: nothing -> nothing {
+export def --env theme [
+  --ghostty   # choose among Ghostty's 463 instead of the palettes
+]: nothing -> nothing {
   if not ((is-terminal --stdin) and (is-terminal --stdout)) {
     error make { msg: "`theme` is the interactive picker and needs a terminal on both ends; `theme use <name>` is not" }
   }
   let before = (ghostty settings | get -o theme)
-  let rows = (theme list --swatches | select theme colours)
+  let rows = (theme list --swatches --ghostty=$ghostty | select theme colours)
 
   mut picking = true
   while $picking {
@@ -353,10 +541,10 @@ export def --env theme []: nothing -> nothing {
       print "unchanged"
       return
     }
-    theme preview $pick.theme
+    theme preview $pick.theme --ghostty=$ghostty
     match ([$"keep ($pick.theme)" "pick another" "leave it as it was"] | input list $"($pick.theme) — this is it")  {
       $a if ($a | default "" | str starts-with "keep") => {
-        theme use $pick.theme
+        theme use $pick.theme --ghostty=$ghostty
         $picking = false
       }
       "pick another" => { theme reset }
@@ -370,6 +558,25 @@ export def --env theme []: nothing -> nothing {
   }
 }
 
+# The app icon for the current theme, rendered again (after editing
+# themes/icon.svg, say), or removed with --off so Ghostty's config decides.
+export def "theme icon" [--off]: nothing -> nothing {
+  if $off {
+    ghostty set { macos-icon: null, macos-custom-icon: null }
+    ghostty reload | ignore
+    print "icon keys removed from the distro's Ghostty file"
+    return
+  }
+  let cur = (theme current)
+  if $cur == null or $cur.name == null { error make { msg: "no theme rendered yet — `theme use <name>`" } }
+  let t = (theme resolve $cur.name --ghostty=($cur.by == "ghostty"))
+  let icon = (render-icon $t)
+  if $icon == null { error make { msg: "no icon: this needs macOS with qlmanage, and a theme with colours" } }
+  ghostty set { macos-icon: "custom", macos-custom-icon: $icon }
+  let reloaded = (ghostty reload)
+  print $"icon ($icon)(if $reloaded { ' — Ghostty reloaded' } else { ' — takes effect when Ghostty reloads its config' })"
+}
+
 # ── Looking ───────────────────────────────────────────────────────────────────
 
 # What was rendered last, or null before the first `theme use`.
@@ -378,37 +585,38 @@ export def "theme current" []: nothing -> any {
   if ($f | path exists) { open $f } else { null }
 }
 
-def current-name []: nothing -> any {
-  theme current | default {} | get -o name
-}
-
 # Every role, its value and the tier that decided it — for a named theme, or
 # the current one. In colour, so the row shows the colour it is talking about.
-export def "theme roles" [name?: string]: nothing -> table {
-  let t = (theme resolve ($name | default (current-name)))
+export def "theme roles" [name?: string@"theme names", --ghostty]: nothing -> table {
+  let cur = (theme current | default {})
+  let t = (theme resolve ($name | default ($cur | get -o name)) --ghostty=($ghostty or ($name == null and ($cur | get -o by) == "ghostty")))
   $t.roles | items {|k, v| { role: $k, value: $v, from: ($t.source | get $k), swatch: (swatch-of $v) } }
 }
 
 def swatch-of [v: string]: nothing -> string {
-  let code = if (is-hex $v) {
+  if (is-hex $v) {
     let rgb = (hex-rgb $v)
-    $"38;2;($rgb.0);($rgb.1);($rgb.2)m"
-  } else { "" }
-  if (is-hex $v) { $"(ansi -e $code)██████(ansi reset)" } else { $"(ansi $v)██████(ansi reset)" }
+    $"(ansi -e $'38;2;($rgb.0);($rgb.1);($rgb.2)m')██████(ansi reset)"
+  } else {
+    $"(ansi $v)██████(ansi reset)"
+  }
 }
 
 # What is on disk, and whether it still matches what Ghostty says.
 export def "theme status" []: nothing -> record {
   let cur = (theme current)
   let dir = (theme state-dir)
+  let settings = (ghostty settings)
   {
     rendered: ($cur != null)
     name: ($cur | get -o name)
+    by: ($cur | get -o by)
     tier: ($cur | get -o tier)
+    dark: ($cur | get -o dark)
     palette: ($cur | get -o palette)
     bat: ($cur | get -o bat)
-    ghostty_theme: (ghostty settings | get -o theme)
-    in_sync: (($cur | get -o name) == (ghostty settings | get -o theme))
+    ghostty_theme: ($settings | get -o theme)
+    icon: ($settings | get -o "macos-custom-icon")
     rendered_at: ($cur | get -o rendered)
     files: (if ($dir | path exists) { ls $dir | get name | each {|f| $f | path basename } } else { [] })
     starship_template: (template-for starship.toml)

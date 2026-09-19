@@ -197,14 +197,15 @@ def screen-shell [--ask, --installed]: nothing -> any {
 
 # ── 4. Theme ──────────────────────────────────────────────────────────────────
 #
-# One theme, and it is the terminal's: a Ghostty theme is rendered for the
-# shell as well — tables, `ls`, bat and the prompt — by `theme use`, which is
-# what `apply` runs for the choice made here. Nothing chosen means the ANSI
-# tier: the shell follows whatever sixteen colours the terminal paints.
+# One theme for everything: a palette is written to Ghostty as a theme and an
+# icon, and rendered for the shell — tables, `ls`, bat and the prompt — by
+# `theme use`, which is what `apply` runs for the choice made here. Nothing
+# chosen means the ANSI tier: the shell follows whatever sixteen colours the
+# terminal paints.
 
 def screen-theme [--ask]: nothing -> record {
   print $"(ansi cyan_bold)4. Theme(ansi reset)"
-  print $"  (ansi dark_gray)one of Ghostty's 463, rendered for Nushell, ls, bat and the prompt too; `theme` changes it later(ansi reset)"
+  print $"  (ansi dark_gray)a hundred palettes \(NvChad's and Catppuccin\), rendered for the terminal, its icon, Nushell, ls, bat and the prompt; `theme` changes it later, `theme --ghostty` picks among Ghostty's own 463(ansi reset)"
   if not $ask { print ""; return { ghostty_theme: null } }
 
   mut ghostty_theme = null
@@ -224,9 +225,10 @@ def screen-theme [--ask]: nothing -> record {
 # The theme picker, but choosing only: nothing is written here, because the
 # whole plan is confirmed before anything is. `theme preview` paints the live
 # terminal and `theme reset` hands it back, so the preview costs nothing either.
+# The list is the palettes — NvChad's and the hand-made ones — the same list
+# `theme` shows; Ghostty's own 463 are a `theme --ghostty` away afterwards.
 def pick-ghostty-theme []: nothing -> any {
   let rows = (theme list --swatches | select theme colours)
-  let before = (ghostty settings | get -o theme)
   mut chosen = null
   mut picking = true
   while $picking {
@@ -239,10 +241,9 @@ def pick-ghostty-theme []: nothing -> any {
       _ => { theme reset; $picking = false }
     }
   }
-  if $chosen == null { theme reset }
   # The paint is left on the screen when a theme was kept; the write happens in
   # `apply`, so a cancelled confirmation still leaves Ghostty's config alone.
-  if $chosen == null and $before != null { theme preview $before }
+  if $chosen == null { theme reset }
   $chosen
 }
 
@@ -342,7 +343,7 @@ def plan-lines [plan: record]: nothing -> list<string> {
   ++ ($settings | each {|l| $"  ($l)" })
   ++ [
     (if ($plan.shell? | default null) != null { $"Ghostty command = ($plan.shell) — a new window starts Nushell" })
-    (if ($plan.ghostty_theme? | default null) != null { $"theme ($plan.ghostty_theme) — Ghostty, and rendered for the shell" })
+    (if ($plan.ghostty_theme? | default null) != null { $"theme ($plan.ghostty_theme) — Ghostty, its icon, and the shell's colours" })
     (if ($plan.font? | default null) != null { $"Ghostty font-family = ($plan.font)" })
     "render the theme, generate tool init files, register plugins"
   ]) | compact
@@ -370,12 +371,13 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> no
   let migrated = (unlink-old-layout $user --dry-run=$dry_run)
   make-user-dir $user (settings-block $plan) --dry-run=$dry_run --fresh=$migrated
 
-  if ($plan.shell? | default null) != null or ($plan.ghostty_theme? | default null) != null or ($plan.font? | default null) != null {
+  # The theme is not set here: `theme use`, in the child below, writes it
+  # together with the icon and the rendered shell colours.
+  if ($plan.shell? | default null) != null or ($plan.font? | default null) != null {
     print $"(ansi cyan_bold)Ghostty(ansi reset)"
     let settings = (
       {}
       | merge (if ($plan.shell? | default null) != null { { command: $plan.shell } } else { {} })
-      | merge (if ($plan.ghostty_theme? | default null) != null { { theme: $plan.ghostty_theme } } else { {} })
       | merge (if ($plan.font? | default null) != null { { font-family: $plan.font } } else { {} })
     )
     for s in ($settings | transpose k v) { print $"  ($s.k) = ($s.v)" }
@@ -387,15 +389,16 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> no
   # process computed BEFORE the user dir existed. A fresh `nu` sees it, so the
   # remaining steps run in a child that loads the new config for real.
   #
-  # The theme render is first: it is what makes the Ghostty theme written above
-  # reach tables, ls, bat and the prompt. No theme chosen re-renders whatever
-  # was chosen before, or the ANSI tier on a first install — never a reset.
+  # The theme is first: `theme use` writes Ghostty's theme and icon, paints
+  # this window, and renders tables, ls, bat and the prompt from it. No theme
+  # chosen re-renders whatever was chosen before, or the ANSI tier on a first
+  # install — never a reset.
   let theme_name = (if ($plan.ghostty_theme? | default null) != null { $plan.ghostty_theme | to nuon } else { "" })
   let steps = ([
     (if $dry_run {
       'print $"(ansi cyan_bold)Theme(ansi reset)"; use terminal *; theme resolve ' + (if $theme_name == "" { "(theme current | default {} | get -o name)" } else { $theme_name }) + ' | select name tier bat | print; print ""'
     } else {
-      'print $"(ansi cyan_bold)Theme(ansi reset)"; use terminal *; theme sync ' + $theme_name + '; print ""'
+      'print $"(ansi cyan_bold)Theme(ansi reset)"; use terminal *; ' + (if $theme_name == "" { "theme sync" } else { "theme use " + $theme_name }) + '; print ""'
     })
     (if $skip_tools { null } else if $dry_run {
       'print $"(ansi cyan_bold)Tool init files(ansi reset)  → (nu-config tools dir)"; nu-config tools status | select tool installed state | print; print ""'

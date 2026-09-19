@@ -295,8 +295,8 @@ export def "font preview" [name: string@font-names]: nothing -> nothing {
 
 # ── Choosing one ──────────────────────────────────────────────────────────────
 
-# Keep a font: Ghostty's config for every window from now on. Not for this one —
-# Ghostty has no CLI reload and no escape sequence for changing font, so the
+# Keep a font: Ghostty's config, then `ghostty reload` so every open window
+# takes it — on macOS, where the AppleScript reload exists; elsewhere the
 # window you are in keeps the font it started with.
 export def "font use" [name: string@font-names]: nothing -> nothing {
   let row = (font list | where font == $name | get 0)
@@ -304,7 +304,7 @@ export def "font use" [name: string@font-names]: nothing -> nothing {
   let after = (font list | where font == $name | get 0)
   if not $after.installed { error make { msg: $"($name) is still not installed; nothing was written" } }
   ghostty set { font-family: $after.family }
-  print $"font is ($after.family) — new windows will use it; this one keeps the font it started with"
+  print (if (ghostty reload) { $"font is ($after.family) — every open window and new ones" } else { $"font is ($after.family) — new windows will use it; this one keeps the font it started with" })
 }
 
 # The picker. Installed fonts are marked, because an uninstalled one costs a

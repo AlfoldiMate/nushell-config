@@ -24,9 +24,10 @@
 #   * `config.ghostty` wins over `config` in the same directory, and only one of
 #     the two is loaded.
 #
-# Ghostty has no `+reload` CLI action — `reload_config` exists only as a keybind
-# action (`ghostty +list-actions`) — so a write here reaches new windows only.
-# The running window is repainted with OSC instead; see theme.nu.
+# Ghostty has no `+reload` CLI action — `reload_config` is a keybind action —
+# but on macOS its AppleScript dictionary can perform any action, so `ghostty
+# reload` below reaches every open window. Elsewhere a write reaches new
+# windows only, and the running one is repainted over OSC instead; see theme.nu.
 
 # Our file, and the line that pulls it in. Relative, so it resolves next to
 # whichever config Ghostty reads.
@@ -207,6 +208,19 @@ export def "ghostty shell" [
   } else {
     $"new Ghostty windows start ($now)"
   })
+}
+
+# Reload Ghostty's configuration in every open window, from the CLI. There is
+# no `+reload` action, but the AppleScript dictionary (`sdef Ghostty.app`) has
+# `perform action`, which takes any keybind action string — `reload_config`
+# included — so on macOS this is what makes a written theme or icon reach the
+# windows already open. True when Ghostty did it; false when it is not running
+# or this is not macOS (Linux has no equivalent yet), and the caller falls
+# back to the OSC repaint. Verified with Ghostty 1.3.1, 2026-09-19.
+export def "ghostty reload" []: nothing -> bool {
+  if $nu.os-info.name != "macos" { return false }
+  let r = (^osascript -e 'tell application "Ghostty" to perform action "reload_config" on (first terminal of first tab of first window)' | complete)
+  $r.exit_code == 0 and ($r.stdout | str trim) == "true"
 }
 
 # ── internals ─────────────────────────────────────────────────────────────────

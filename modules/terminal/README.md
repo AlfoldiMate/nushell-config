@@ -4,9 +4,10 @@ The terminal you are running in: its theme, and its configuration.
 
 ```nu
 terminal list                  # which terminals this distro knows, and what is true here
-theme                          # pick from Ghostty's 463, the terminal is the preview
+theme                          # pick from a hundred palettes, the terminal is the preview
+theme --ghostty                # or from Ghostty's own 463
 font                           # pick a Nerd Font, install it, see it in a real window
-theme use "TokyoNight Storm"   # or name one; Tab completes them
+theme use tokyonight           # or name one; Tab completes them
 theme roles                    # what the shell made of it: every role, its colour, which tier
 ghostty shell                  # a new Ghostty window starts Nushell
 ghostty status                 # what this distro has written into Ghostty's config
@@ -24,13 +25,17 @@ questions `install.nu` asks before any of them runs.
 
 | Command | Does |
 |---|---|
-| `theme` | the picker: all 463 with their own colours beside them, then paint, then keep or not |
-| `theme list [--swatches]` | every theme Ghostty can find, with its file; `--swatches` adds the sixteen colours |
-| `theme palette <name>` | one theme file as data: `palette` 0-15 and the named colours |
-| `theme preview <name>` | paint this session, change nothing on disk |
+| `theme [--ghostty]` | the picker: the hundred palettes (or Ghostty's 463) with their own colours beside them, then paint, then keep or not |
+| `theme list [--ghostty] [--swatches]` | the palettes, or Ghostty's own themes with their files; `--swatches` adds the sixteen colours |
+| `theme preview <name> [--ghostty]` | paint this session, change nothing on disk |
 | `theme reset` | hand the palette back to Ghostty's config — the way out of a preview |
-| `theme use <name>` | paint, keep (`ghostty set`), and render the shell's colours from it |
+| `theme use <name> [--ghostty] [--no-icon]` | write Ghostty's theme and icon, paint, reload every window, render the shell's colours |
+| `theme icon [--off]` | render the app icon for the current theme again, or remove the icon keys |
 | `theme roles [name]` | every role, its resolved colour and the tier that decided it, with a swatch |
+| `theme palettes` | every palette file: name, dark, kind, the Ghostty theme it extends |
+| `theme palette <name>` | one Ghostty theme file as data: `palette` 0-15 and the named colours |
+| `ghostty themes [--swatches]` | every theme Ghostty can find, with its file |
+| `ghostty reload` | reload Ghostty's config in every open window (macOS, AppleScript); true when it did |
 | `theme status` | what is rendered, from which theme, at which tier, and whether Ghostty agrees |
 | `theme sync [name]` | re-resolve and re-render — after a `git pull` changed a template, or `--none` to forget the theme |
 | `theme resolve [name]` | the resolved theme as data, nothing written |
@@ -57,17 +62,19 @@ Theme names are Tab-completable everywhere they are taken.
 ## Configuration
 
 No knobs. The one piece of state is what `theme use` renders into `<your
-dir>/.state/theme/` — `theme.nuon`, `starship.toml`, `ls_colors` — which
-`conf/theme.nu` and `conf/prompt.nu` read at startup; `theme status` shows it.
+dir>/.state/theme/` — `theme.nuon`, `starship.toml`, `ls_colors`, a Ghostty
+theme file and an icon per palette used — which `conf/theme.nu`, `conf/prompt.nu`
+and Ghostty read; `theme status` shows it.
 Ghostty's own configuration is read at the moment you ask, never cached. The
 templates being rendered live in `themes/` (`themes/README.md`), and a copy in
 your own `themes/` is the one used.
 
 ## Dependencies
 
-`ghostty`, and hard: the themes, their files and the configuration being written
-are all Ghostty's. `nu-config module check terminal`. Without it `theme list`
-errors and `theme reset` still works — OSC is the terminal's, not Ghostty's, so
+`ghostty`, and hard: the configuration being written is Ghostty's, and so are
+the 463 themes behind `--ghostty`. `nu-config module check terminal`. Without
+it the palettes still list and resolve (at tier three, with no window to
+paint), `theme list --ghostty` errors and `theme reset` still works — OSC is the terminal's, not Ghostty's, so
 the escape sequences are understood by any terminal that implements them; only
 everything that has to *know* what a theme is needs Ghostty.
 
@@ -119,6 +126,23 @@ reload, and the preview is the whole terminal — prompt, tables, scrollback —
 a pane with swatches in it. "Reset" means back to whatever Ghostty's own config
 says, which is why `theme reset` needs no memory of what was there before.
 
+### Ghostty can be reloaded from the CLI after all — through AppleScript
+
+There is no `ghostty +reload`; `reload_config` is a keybind action. But the
+app's AppleScript dictionary (`sdef /Applications/Ghostty.app`) has `perform
+action`, which takes any action string, so
+
+```
+osascript -e 'tell application "Ghostty" to perform action "reload_config" on (first terminal of first tab of first window)'
+```
+
+reloads the configuration in every open window and returns `true`. `ghostty
+reload` wraps it, and `theme use`, `theme icon` and `font use` call it, which
+is how a written theme, icon or font reaches the windows already open rather
+than only new ones. macOS only (`macos-applescript`, default on); the OSC
+repaint stays for the preview and for everything else. Verified with Ghostty
+1.3.1 on 2026-09-19.
+
 ### It does not repaint as you arrow through the list
 
 `input list` cannot call back on cursor movement, and the alternative — driving
@@ -134,11 +158,11 @@ sixteen colours as truecolor blocks, so all 463 are previewed at once.
 ### A font is previewed in a window of its own
 
 You cannot preview a font you have not installed: the terminal renders with the
-fonts it has, and a name in a list tells you nothing. You cannot preview one you
-*have* installed in the window you are sitting in either — Ghostty has no CLI
-reload, and there is no escape sequence for "change font" the way OSC 4 is
-"change colour". That asymmetry is why the theme picker repaints in place and
-the font picker cannot.
+fonts it has, and a name in a list tells you nothing. Nor is there an escape
+sequence for "change font" the way OSC 4 is "change colour", so previewing one
+you *have* installed in the window you are sitting in would mean writing it to
+the config and reloading — a preview that is already a change. That asymmetry
+is why the theme picker repaints in place and the font picker cannot.
 
 What Ghostty does have is `--font-family` on its own command line, so `font
 preview` opens a new window in the candidate font running a specimen: Ghostty's
@@ -269,7 +293,7 @@ every shell does, so the window gets a login nu (`$nu.is-login == true`) with
 
 ### Why it is lazy
 
-Loading these files costs 13 ms, for commands a shell uses once in a while,
+Loading these files costs 18 ms, for commands a shell uses once in a while,
 so `theme`, `ghostty` and `font` are trigger words
 (`MODULES_TRIGGERS` in `defaults.nu`). Typing `ghostty +list-themes` loads the
 module too, which is harmless.
@@ -280,13 +304,15 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 
 | What | Cost |
 |---|---|
-| the module, loaded | 13 ms — 72.1 ms of startup with it eager against 58.8 ms with it lazy, medians of 25 cold starts, 2026-09-19 with palette.nu |
-| parsing the module | 11.1 ms — `nu -n -c 'use terminal *'` against an empty run, medians of 15; 8.2 ms before palette.nu on the same day, so the renderer is 3 ms of parse. `detect.nu` is 0.9 ms of it |
-| `theme list` | 31 ms — it spawns `ghostty +list-themes` |
-| `theme list --swatches` | 333 ms, reading all 463 theme files |
-| `theme resolve <name>` | 40 ms, of which 31 ms is `theme palette` spawning `ghostty +list-themes` to find the file |
+| the module, loaded | 18 ms — 78.4 ms of startup with it eager against 60.1 ms with it lazy, medians of 25 cold starts, 2026-09-19 with palette.nu |
+| parsing the module | 13.8 ms — `nu -n -c 'use terminal *'` against an empty run, medians of 15; 8.2 ms before palette.nu on the same day, so the renderer is 5.6 ms of parse. `detect.nu` is 0.9 ms of it |
+| `ghostty themes` | 31 ms — it spawns `ghostty +list-themes` |
+| `ghostty themes --swatches` | 333 ms, reading all 463 theme files |
+| `theme list` | 24 ms: a hundred palette files opened; 133 ms with `--swatches` (the four Catppuccins read Ghostty's files, through one listing) |
+| `theme names` | 55 ms: the palettes plus Ghostty's list — what Tab pays on `theme use ` |
+| `theme resolve <name>` | 40 ms for a Ghostty theme, of which 31 ms is `theme palette` spawning `ghostty +list-themes` to find the file; a palette with its own `terminal` block spawns nothing |
 | `theme sync` | 44 ms: the resolve, vivid, three files written |
-| `theme use` | 188 ms: `ghostty set` validates through `+validate-config`, the name is checked, previewed and resolved — four Ghostty spawns — then the render |
+| `theme use` | 320 ms: the resolve, the icon through `qlmanage`, `ghostty set` validating through `+validate-config`, the paint, `ghostty reload` through osascript, then the render |
 | reading the render at startup | 0.36 ms for `theme.nuon` (1 kB), 0.09 ms for `ls_colors` (6 kB), medians of 21 |
 | reading all 463 files | 39 ms; `(?m)` over the whole file rather than `lines` halves the parse, 49 ms against 109 ms |
 | one swatch | bit shifts rather than splitting the hex into pairs: 95 ms over all 463 against 380 ms |
@@ -327,12 +353,10 @@ detect.nu    the terminal registry: installed, running, how to get one
   go; nothing else assumes there is only one.
 - Ghostty has no Windows build yet, so `terminal install` on Windows prints the
   download page and runs nothing.
-- Ghostty cannot reload its config from the CLI (`reload_config` is a keybind
-  action), so a write reaches new windows only; the running one is repainted
-  over OSC instead. The two together are why `theme use` does both.
+- Off macOS there is no `ghostty reload` (it is AppleScript), so a write
+  reaches new windows only; the running one is repainted over OSC instead.
 - `cursor-text` in a theme file is ignored: there is no OSC for it.
-- A font takes effect in new windows only, for the same reason a theme needs
-  OSC: Ghostty cannot reload its configuration from the CLI, and there is no
+- Off macOS a font takes effect in new windows only: no reload, and no
   escape sequence for changing font.
 - That the preview window renders in the requested family is Ghostty's
   documented CLI behaviour (`ghostty --help` gives `--font-family="Fira Code"`

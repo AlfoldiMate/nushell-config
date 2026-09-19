@@ -1,14 +1,15 @@
-# theme — Ghostty's themes: listing them, reading them, painting one onto the
-# running terminal
+# theme — Ghostty's own themes: listing them, reading them, and painting a
+# palette onto the running terminal
 #
-#   theme list            every theme Ghostty can find (--swatches: in colour)
-#   theme palette <name>  one theme file as data: the sixteen and the named colours
-#   theme preview <name>  paint this session only
+#   ghostty themes        every theme Ghostty can find (--swatches: in colour)
+#   theme palette <name>  one Ghostty theme file as data: the sixteen and the named colours
+#   theme paint <record>  paint this session with a palette record, nothing on disk
 #   theme reset           back to what Ghostty's config says
 #
-# Choosing one — `theme`, `theme use` — and what the choice means for the shell
-# is palette.nu, which builds on the two things here: a theme file as data, and
-# a theme painted onto the window you are in.
+# Choosing a theme — `theme`, `theme list`, `theme use`, `theme preview` — and
+# what the choice means for the shell is palette.nu, which builds on the two
+# things here: a Ghostty theme file as data, and a palette painted onto the
+# window you are in.
 #
 # Why the terminal is the preview and not a pane: the sixteen ANSI colours are
 # the base of every Nushell theme this distro renders, and a Ghostty theme file
@@ -30,7 +31,7 @@ const NAMED_RE = '(?m)^\s*(?<k>background|foreground|cursor-color|selection-back
 # punctuation ('TokyoNight Storm', '0x96f'), so the list comes from Ghostty and
 # never from a glob. Ghostty searches two directories and labels each name with
 # the one it came from, which is how a theme of your own shadows a shipped one.
-export def "theme list" [
+export def "ghostty themes" [
   --swatches   # add the theme's own sixteen colours as a column (+300 ms)
 ]: nothing -> table {
   if (ghostty-bin) == null { error make { msg: "ghostty is not installed — `terminal install ghostty`" } }
@@ -44,7 +45,7 @@ export def "theme list" [
     | insert path {|r| $dirs | get -o $r.source | default "" | path join $r.theme }
   )
   if not $swatches { return $themes }
-  $themes | insert colours {|t| swatch (theme-hexes $t.path) }
+  $themes | insert colours {|t| theme swatch (theme-hexes $t.path) }
 }
 
 # Ghostty's two theme directories, keyed by the label `+list-themes` prints.
@@ -65,16 +66,16 @@ def theme-dirs []: nothing -> record {
 # One theme file: `palette = N=#hex` for 0-15 plus a few named colours, which are
 # the same things OSC can set. Anything else Ghostty allows in a theme is ignored
 # rather than rejected — a theme is data, and a new key is Ghostty's business.
-export def "theme palette" [name: string@"theme names"]: nothing -> record {
-  let f = (theme list | where theme == $name | get -o 0.path)
+export def "theme palette" [name: string@"ghostty names"]: nothing -> record {
+  let f = (ghostty themes | where theme == $name | get -o 0.path)
   if $f == null { error make { msg: $"Ghostty has no theme called '($name)'" } }
-  read-theme $f $name
+  theme read $f $name
 }
 
 # Reads a theme FILE. Everything that works over all 463 goes through here with
 # a path from a single `theme list`, never through `theme palette`, which spawns
 # Ghostty to resolve the name — 463 spawns is eight seconds.
-def read-theme [file: path, name: string]: nothing -> record {
+export def "theme read" [file: path, name: string]: nothing -> record {
   let text = (open $file)
   {
     theme: $name
@@ -89,9 +90,9 @@ def theme-hexes [file: path]: nothing -> list<string> {
   open $file | parse -r $PALETTE_RE | sort-by {|r| $r.i | into int } | get hex
 }
 
-# The names alone — what every `<name>` argument completes from.
-export def "theme names" []: nothing -> list<string> {
-  theme list | get theme
+# The names alone.
+export def "ghostty names" []: nothing -> list<string> {
+  ghostty themes | get theme
 }
 
 # ── Painting the running terminal ─────────────────────────────────────────────
@@ -124,14 +125,23 @@ def paint [t: record]: nothing -> string {
   $pal ++ $named | str join
 }
 
-# Paint this session with a theme and change nothing on disk. The test is
-# `is-terminal --stdout`, not `$nu.is-interactive`: these bytes are instructions
-# to a terminal and in a pipeline they would be data, so what matters is where
+# Paint this session with a palette record (`theme palette`'s shape: `palette`
+# 0-15 and `named`) and change nothing on disk. The test is `is-terminal
+# --stdout`, not `$nu.is-interactive`: these bytes are instructions to a
+# terminal and in a pipeline they would be data, so what matters is where
 # stdout goes. It is also why install.nu can preview — a script is never
 # "interactive", but its stdout is the terminal you are looking at.
-export def "theme preview" [name: string@"theme names"]: nothing -> nothing {
-  if not (is-terminal --stdout) { error make { msg: "theme preview paints a terminal; stdout is not one" } }
-  print -n (paint (theme palette $name))
+export def "theme paint" [t: record]: nothing -> nothing {
+  if not (is-terminal --stdout) { error make { msg: "theme paint paints a terminal; stdout is not one" } }
+  print -n (paint $t)
+}
+
+# A Ghostty theme file's palette record as the `theme = ` lines Ghostty reads,
+# so a palette that is not one of Ghostty's can be handed to it as a file.
+export def "theme ghostty-file" [t: record]: nothing -> string {
+  let pal = ($t.palette | transpose i hex | sort-by {|r| $r.i | into int } | each {|p| $"palette = ($p.i)=($p.hex)" })
+  let named = ($t.named | transpose k v | each {|n| $"($n.k) = ($n.v)" })
+  $pal ++ $named ++ [""] | str join (char nl)
 }
 
 # Hand the palette back to Ghostty's configuration — the way out of a preview
@@ -144,7 +154,7 @@ export def "theme reset" []: nothing -> nothing {
 # Sixteen blocks in the theme's own colours, as truecolor, so a swatch shows what
 # the theme IS rather than what the current palette happens to be. Bit shifts
 # rather than splitting the hex into pairs: 95 ms over all 463 instead of 380 ms.
-def swatch [hexes: list<string>]: nothing -> string {
+export def "theme swatch" [hexes: list<string>]: nothing -> string {
   $hexes
   | each {|hex|
       let n = ($"0x($hex | str substring 1..)" | into int)

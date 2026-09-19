@@ -13,7 +13,7 @@
 # palette.nu resolves and renders, ghostty.nu writes, and detect.nu answers the
 # two questions the installer asks first: is it installed, and are we in it.
 #
-# Lazy, and measured: loading these files costs 13 ms (meta.nuon carries the
+# Lazy, and measured: loading these files costs 18 ms (meta.nuon carries the
 # number and docs/modules.md the method), for commands a shell uses once in a
 # while. So `theme`, `ghostty` and `font` are trigger words — see meta.nuon.
 
