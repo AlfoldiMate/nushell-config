@@ -195,7 +195,7 @@ distro, including across a `git pull` that changes it.
 nu-config doctor            # both roots, the layout state, parse, tools, plugins
 nu-config knobs             # every knob, and whether you have overridden it
 nu-config knobs --overridden
-nu-config edit user         # your settings.nu
+nu-config edit user         # your config directory, settings.nu first
 ```
 
 `nu-config doctor` reports the layout as `split` (the target), `in-place` (the

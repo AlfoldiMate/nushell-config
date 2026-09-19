@@ -124,6 +124,15 @@ const SMART_TAB = true
 # "off": never; Tab still filters and deduplicates.
 $env.NU_COMPLETE_EVAL = "safe"
 
+# Partial completion: Tab first inserts what every candidate shares (`bits r`
+# → `bits ro`), and only then opens the menu. Off, because on Nushell main
+# (0.115.2, reedline c9e7035 — the next release, and every build from source)
+# a sourced menu is handed the pre-splice line after that insert, so the next
+# Tab replaces the wrong span: `bits r` Tab Tab Enter lands as `bits ror o`,
+# `theme use Cat` as `"Catppuccin tppuccin`. 0.115.1 is clean; set this true
+# there if you miss it. Verified in a pty, 2026-09-19 (docs/completion.md).
+$env.config.completions.partial = false
+
 # ── Modules ───────────────────────────────────────────────────────────────────
 # Which modules this shell has. Each is a directory under modules/ with a
 # mod.nu, a load.nu, a meta.nuon and a README — docs/modules.md is the

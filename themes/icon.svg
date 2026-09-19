@@ -5,7 +5,7 @@
      bar and the ghost, on a rounded tile with Tahoe-style padding (835 of 1024,
      centred). The six placeholders are roles: bg and fg, then the bar left to
      right — err (red), accent (blue), ok (green), warn (yellow). Rendered to
-     PNG by macOS's own `qlmanage`, and handed to Ghostty as macos-custom-icon.
+     PNG by AppKit (modules/terminal/rasterize.js), and handed to Ghostty as macos-custom-icon.
      A copy in <your dir>/themes/icon.svg is rendered instead of this one. -->
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs><clipPath id="tile"><rect x="94.5" y="94.5" width="835" height="835" rx="187"/></clipPath></defs>

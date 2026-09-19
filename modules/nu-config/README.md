@@ -24,7 +24,7 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 | `fetch completion <tool>` | vendor one from nu_scripts **into your directory**, never the distro |
 | `startup-time [n]` | time N cold interactive starts |
 | `loaded-files` | what was parsed this session — find a slow import |
-| `edit` / `edit user` | open the distro / your `settings.nu` |
+| `edit` / `edit user` | open the distro / your config directory (creating `settings.nu` the first time) |
 | `distro-root` / `user-root` / `install-status` | where things are |
 
 ## Configuration

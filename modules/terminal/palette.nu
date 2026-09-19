@@ -106,6 +106,8 @@ const NAMED = {
 # ANSI name rather than a hex (tiers one and two), the terminal's own hex for
 # that colour is used instead.
 const ICON_ROLES = { bg: bg, fg: fg, err: red, accent: blue, ok: green, warn: yellow }
+# The SVG rasterizer, next to this file (see its header for why not qlmanage).
+const RASTERIZE = (path self | path dirname | path join rasterize.js)
 
 # ── Where things live ─────────────────────────────────────────────────────────
 
@@ -401,13 +403,15 @@ def render-ls-colors [t: record]: nothing -> any {
 }
 
 # The app icon: themes/icon.svg with its six roles filled in, rasterized by
-# macOS's own `qlmanage` (QuickLook renders SVG through WebKit — the one
-# SVG rasterizer a stock Mac has; `sips` cannot read SVG). Ghostty takes the
+# AppKit through rasterize.js (`osascript -l JavaScript`, on every Mac). Not
+# `qlmanage -t`: QuickLook's thumbnail is composited onto opaque white, so the
+# padding round the tile was a white square in the Dock — only obvious once a
+# light theme had been tried. `sips` cannot read SVG at all. Ghostty takes the
 # PNG as `macos-custom-icon`. The file is named by the theme, not `icon.png`,
 # so the path in Ghostty's config changes with the theme and a reload sees a
-# change. Null off macOS, without a terminal record, or when qlmanage fails.
+# change. Null off macOS, without a terminal record, or when the render fails.
 def render-icon [t: record]: nothing -> any {
-  if $nu.os-info.name != "macos" or $t.terminal == null or (which qlmanage | is-empty) { return null }
+  if $nu.os-info.name != "macos" or $t.terminal == null or (which osascript | is-empty) { return null }
   let hexes = (term-hexes $t.terminal)
   let svg = (
     $ICON_ROLES | transpose ph role | reduce -f (open --raw (template-for icon.svg)) {|it, acc|
@@ -420,13 +424,10 @@ def render-icon [t: record]: nothing -> any {
   let stem = (theme slug $t.name)
   let svg_file = ($dir | path join $"($stem).svg")
   $svg | save -f $svg_file
-  # qlmanage names its output <input>.png in the directory given.
-  let r = (^qlmanage -t -s 1024 -o $dir $svg_file | complete)
-  let out = ($dir | path join $"($stem).svg.png")
-  if $r.exit_code != 0 or not ($out | path exists) { return null }
   let png = ($dir | path join $"($stem).png")
-  mv -f $out $png
+  let r = (^osascript -l JavaScript $RASTERIZE $svg_file $png 1024 | complete)
   rm -f $svg_file
+  if $r.exit_code != 0 or ($r.stdout | str trim) != "ok" or not ($png | path exists) { return null }
   $png
 }
 
@@ -583,7 +584,7 @@ export def "theme icon" [--off]: nothing -> nothing {
   if $cur == null or $cur.name == null { error make { msg: "no theme rendered yet — `theme use <name>`" } }
   let t = (theme resolve $cur.name --ghostty=($cur.by == "ghostty"))
   let icon = (render-icon $t)
-  if $icon == null { error make { msg: "no icon: this needs macOS with qlmanage, and a theme with colours" } }
+  if $icon == null { error make { msg: "no icon: this needs macOS, and a theme with colours" } }
   ghostty set { macos-icon: "custom", macos-custom-icon: $icon }
   let reloaded = (ghostty reload)
   print $"icon ($icon)(if $reloaded { ' — Ghostty reloaded' } else { ' — takes effect when Ghostty reloads its config' })"

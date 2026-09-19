@@ -257,7 +257,8 @@ def screen-font [--ask, --dry-run]: nothing -> record {
     return { font: null }
   }
   let rows = (font list)
-  let now = (ghostty settings | get -o font-family)
+  # What Ghostty is using, whoever configured it — not only what we wrote.
+  let now = (ghostty live font-family)
   print $"  current   ($now | default "Ghostty's own built-in JetBrains Mono")"
   print $"  installed ((($rows | where installed | get font) | str join ', ') | default 'none of the fifteen')"
   if (not $ask) or $dry_run {

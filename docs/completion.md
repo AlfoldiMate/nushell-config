@@ -303,3 +303,13 @@ What the new inputs bought, and what they did not:
   miss (`git log --one` → `--oneline`).
 - The `--taps`/`--version` blocks of the zsh file are not subcommands and
   are skipped.
+- Partial completion is off (`$env.config.completions.partial = false` in
+  `defaults.nu`). On Nushell main — 0.115.2, reedline c9e7035; the next
+  release, and any build from source — a sourced menu keeps the line it
+  recorded before the common prefix was spliced in, so the Tab after it
+  replaces the wrong span: `bits r` Tab Tab Enter lands as `bits ror o`,
+  `theme use Cat` as `"Catppuccin tppuccin`. The cause is
+  `SourcedMenu::can_partially_complete` (`crates/nu-cli/src/menus/sourced_menu.rs`)
+  letting the inner ColumnarMenu refresh past the wrapper. Reproduced and the
+  workaround verified in a pty on 2026-09-19; 0.115.1 is clean, and turning
+  the key back on in `settings.nu` is safe there.

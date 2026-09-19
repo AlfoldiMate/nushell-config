@@ -71,7 +71,7 @@ platform table.
 Start with **your** `settings.nu`, next to your `config.nu`:
 
 ```nu
-nu-config edit user          # opens it, from a commented template the first time
+nu-config edit user          # opens your directory; settings.nu is created from a commented template the first time
 nu-config knobs              # all 65 knobs, their shipped value, and yours
 nu-config knobs --overridden # just yours
 ```
@@ -278,7 +278,7 @@ nu-config plugins add      # after `brew upgrade nushell`
 nu-config startup-time     # cold starts; regression-check after adding anything
 nu-config loaded-files     # what was parsed this session; find a slow import
 nu-config edit             # open the distro in $EDITOR
-nu-config edit user        # open your settings.nu
+nu-config edit user        # open your config directory
 nu-complete status         # completion caches: brew package db, specs, session memo
 ```
 

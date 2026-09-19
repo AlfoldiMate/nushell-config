@@ -8,7 +8,7 @@
 #   nu-config startup-time        time cold starts
 #   nu-config upgrade             pull the distro; `upgrade check | status` around it
 #   nu-config edit                open the distro in $EDITOR
-#   nu-config edit user           open your own settings.nu
+#   nu-config edit user           open your own config directory
 #
 # `help nu-config` lists everything.
 
@@ -312,15 +312,19 @@ export def edit []: nothing -> nothing {
   ^($ed | first) ...($ed | skip 1) (distro-root)
 }
 
-# Open your own settings.nu in $EDITOR, creating it if this is the first time.
+# Open your own config directory in $EDITOR — settings.nu, autoload/,
+# completions/, themes/ are all yours and belong in one view — creating
+# settings.nu from the template if this is the first time, so the file to
+# start with is there when the editor opens.
 export def "edit user" []: nothing -> nothing {
-  let f = ((user-root) | path join settings.nu)
+  let root = (user-root)
+  let f = ($root | path join settings.nu)
   if not ($f | path exists) {
     let template = ((distro-root) | path join templates settings.nu)
     if ($template | path exists) { cp $template $f } else { "" | save -f $f }
   }
   let ed = (editor-argv)
-  ^($ed | first) ...($ed | skip 1) $f
+  ^($ed | first) ...($ed | skip 1) $root
 }
 
 # ── Modules ───────────────────────────────────────────────────────────────────

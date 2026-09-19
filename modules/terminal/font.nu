@@ -11,10 +11,11 @@
 #
 # You cannot preview a font you have not installed — the terminal renders with
 # the fonts it has, and a name in a list tells you nothing. Nor can you preview
-# one you HAVE installed in the window you are sitting in: Ghostty cannot reload
-# its configuration from the CLI, and there is no escape sequence for "change
-# font" the way OSC 4 is "change colour", which is what makes the theme picker
-# able to repaint in place.
+# one you HAVE installed in the window you are sitting in without keeping it:
+# there is no escape sequence for "change font" the way OSC 4 is "change
+# colour", which is what makes the theme picker able to repaint in place, and
+# `ghostty reload` (macOS only) reloads the written configuration — a choice,
+# not a preview.
 #
 # What Ghostty does have is `--font-family` on its own command line, so a new
 # window can be opened in the candidate font running a specimen. That is a real
@@ -92,10 +93,21 @@ const FACES = ["Regular" "Bold" "Italic" "BoldItalic"]
 # The catch that makes this work at all: a family Ghostty cannot find does NOT
 # fail, it silently falls back to the configured font. So the test is whether
 # the face it names is the family we asked for. 26 ms per call.
+#
+# `font-family` is a repeatable key — a LIST of families, first match wins —
+# and a command-line flag appends to the list the config already built. So with
+# any `font-family =` configured (the user's own, or the one `font use` writes)
+# `--font-family=X` alone is answered with the configured family for every X,
+# and every font reads as "not installed". An empty `--font-family=` first
+# empties the list, which is Ghostty's documented way to reset a repeatable
+# key. Verified with Ghostty 1.3.1, 2026-09-19: without the reset, FiraCode
+# (installed) came back as "JetBrainsMono Nerd Font Mono"; with it, as
+# "FiraCode Nerd Font", and a family that is not installed as Ghostty's
+# built-in "JetBrains Mono".
 export def "font face" [family: string]: nothing -> any {
   let g = (ghostty-bin)
   if $g == null { return null }
-  ^$g +show-face $"--font-family=($family)" --string=A
+  ^$g +show-face "--font-family=" $"--font-family=($family)" --string=A
   | parse -r 'found in face .(?<face>[^“”"]+).'
   | get -o 0.face
 }
@@ -107,13 +119,17 @@ def installed? [family: string]: nothing -> bool {
 
 # The registry, with what is true on this machine. One Ghostty spawn per font,
 # in parallel: 15 sequential calls are 400 ms, `par-each` brings that under 100.
+#
+# `current` is judged by what Ghostty reports it is using, not by what this
+# distro wrote: a `font-family` in the user's own config is just as current, and
+# the variant they chose ("JetBrainsMono Nerd Font Mono") is the same font.
 export def "font list" []: nothing -> table<font: string, installed: bool, current: bool, family: string, what: string> {
-  let now = (ghostty settings | get -o font-family)
+  let now = (ghostty live font-family | default "")
   registry | par-each {|f|
     {
       font: $f.name
       installed: (installed? $f.family)
-      current: ($f.family == $now)
+      current: ($now | str starts-with $f.family)
       family: $f.family
       what: $f.what
     }
@@ -334,8 +350,7 @@ export def main []: nothing -> nothing {
 
     match ([$"keep ($pick.font)" "see it in a new window" "pick another" "leave it as it was"] | input list $"($row.family)") {
       $a if ($a | default "" | str starts-with "keep") => {
-        ghostty set { font-family: $row.family }
-        print $"kept ($row.family) — new windows will read it from Ghostty's config"
+        font use $pick.font
         $picking = false
       }
       "see it in a new window" => { font preview $pick.font }

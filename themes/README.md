@@ -74,7 +74,8 @@ plus optional `bat` / `vivid` naming themes those tools ship and `dark`.
 
 `theme use` renders `icon.svg` — Jason Long's ghostty-theme-icons drawing,
 with `bg`, `fg` and the four bar colours (`err`, `accent`, `ok`, `warn`) as
-placeholders — to a PNG with macOS's own `qlmanage`, and hands Ghostty
+placeholders — to a PNG through AppKit (`modules/terminal/rasterize.js`, run
+by `osascript`, so the padding round the tile is transparent), and hands Ghostty
 `macos-icon = custom` + `macos-custom-icon = <it>`. No icon files are shipped:
 a hundred themes is a hundred 2.5 MB `.icns`, and six colours is all an icon
 is. `theme use --no-icon` leaves the icon alone, `theme icon --off` takes the

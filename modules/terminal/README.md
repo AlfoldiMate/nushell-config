@@ -193,6 +193,18 @@ cannot find does not error, it silently falls back to the configured font. So
 the test is whether the face it names is the family that was asked for. One
 spawn per font, 26 ms each, run through `par-each`: 103 ms for all fifteen.
 
+One more thing has to be true for the question to reach Ghostty at all:
+`font-family` is a *repeatable* key, a list of families of which the first
+found wins, and a `--font-family=X` on the command line is appended to the list
+the configuration already built. With any `font-family =` configured — the
+user's own, or the one `font use` writes — the answer was the configured family
+for every X, so every font read as not installed and `font use` tried to
+install what was already there. `font face` therefore passes an empty
+`--font-family=` first, Ghostty's way of emptying a repeatable key, and only
+then the family it is asking about. (2026-09-19; the same is true of
+`ghostty +show-config`, which is why `font list` reads the current font from
+there, through `ghostty live`, rather than from the distro's own file.)
+
 ### The registry never trusts its own family names
 
 Nerd Fonts renames several fonts to avoid trademark collisions — CascadiaCode
@@ -312,7 +324,7 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 | `theme names` | 55 ms: the palettes plus Ghostty's list — what Tab pays on `theme use ` |
 | `theme resolve <name>` | 40 ms for a Ghostty theme, of which 31 ms is `theme palette` spawning `ghostty +list-themes` to find the file; a palette with its own `terminal` block spawns nothing |
 | `theme sync` | 44 ms: the resolve, vivid, three files written |
-| `theme use` | 320 ms: the resolve, the icon through `qlmanage`, `ghostty set` validating through `+validate-config`, the paint, `ghostty reload` through osascript, then the render |
+| `theme use` | 320 ms: the resolve, the icon through AppKit (`rasterize.js`, 100 ms), `ghostty set` validating through `+validate-config`, the paint, `ghostty reload` through osascript, then the render |
 | reading the render at startup | 0.36 ms for `theme.nuon` (1 kB), 0.09 ms for `ls_colors` (6 kB), medians of 21 |
 | reading all 463 files | 39 ms; `(?m)` over the whole file rather than `lines` halves the parse, 49 ms against 109 ms |
 | one swatch | bit shifts rather than splitting the hex into pairs: 95 ms over all 463 against 380 ms |

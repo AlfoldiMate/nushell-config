@@ -162,10 +162,10 @@ export def "ghostty status" []: nothing -> record {
     ours: (ours-path)
     included: (if ($cfg | path exists) { includes? $cfg } else { false })
     settings: (ghostty settings)
-    live_theme: (live "theme")
+    live_theme: (ghostty live "theme")
     # What a new window starts. Ghostty's own default when nothing sets it:
     # SHELL, then the passwd entry — zsh on a stock Mac.
-    shell: (live "command")
+    shell: (ghostty live "command")
   }
 }
 
@@ -202,7 +202,7 @@ export def "ghostty shell" [
   } else {
     ghostty set { command: (ghostty nu-path) }
   }
-  let now = (live "command")
+  let now = (ghostty live "command")
   print (if $now == null {
     "Ghostty is not installed; the setting is written for when it is"
   } else {
@@ -267,8 +267,10 @@ def validate []: nothing -> record<ok: bool, err: string> {
 
 # What Ghostty itself reports for one key, which is how we know we wrote to the
 # file it actually reads. Null when Ghostty is not installed or the key is
-# unset — `+show-config` prints only keys that resolved to a value.
-def live [key: string]: nothing -> any {
+# unset — `+show-config` prints only keys that resolved to a value. For a
+# repeatable key (`font-family`) this is the first value, which is the one
+# Ghostty uses. 18 ms.
+export def "ghostty live" [key: string]: nothing -> any {
   let g = (ghostty-bin)
   if $g == null { return null }
   ^$g +show-config
