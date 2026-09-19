@@ -210,7 +210,7 @@ def taps []: nothing -> list<record> {
   if not ($dir | path exists) { return [] }
   # Sorted: `glob` returns directory order, which differs by file system.
   let dir = $dir | str replace -a '\' '/'
-  glob ($dir + "/*/*") | sort | each {|p| { value: ($p | path relative-to $dir | str replace "homebrew-" "") } }
+  glob ($dir + "/*/*") | sort | each {|p| { value: ($p | path relative-to $dir | str replace -a '\' '/' | str replace "homebrew-" "") } }
 }
 
 # ── The spec with its sources, as the engine wants it ─────────────────────────

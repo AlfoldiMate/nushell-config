@@ -17,9 +17,12 @@ def --wrapped install [...flags: string]: nothing -> record {
   ^$nu.current-exe ($ROOT | path join install.nu) --skip-tools --skip-plugins ...$flags | complete
 }
 
+# Forward slashes: a backslash is an escape in a glob pattern, and the
+# paths are compared as the scaffold spells them.
 def files-under [dir: string]: nothing -> list<string> {
   if not ($dir | path exists) { return [] }
-  glob ($dir + "/**/*") --no-dir | each {|f| $f | path relative-to $dir } | sort
+  let dir = $dir | str replace -a '\' '/'
+  glob ($dir + "/**/*") --no-dir | each {|f| $f | path relative-to $dir | str replace -a '\' '/' } | sort
 }
 
 const SCAFFOLD = [
