@@ -34,6 +34,13 @@
 const OURS = "nushell-distro.ghostty"
 const INCLUDE = "config-file = ?nushell-distro.ghostty"
 const MARK = "# Added by the Nushell distro; `ghostty reset` removes it again."
+# Keys Ghostty treats as a LIST: every assignment appends, and the first entry
+# wins where one is used. Our file is applied after the user's, so for these a
+# plain `key = value` would sit behind whatever they set and lose — verified
+# with `+show-config` on 1.3.1: their `font-family` first, ours second, theirs
+# used. An empty `key =` clears the list, so each of these is written as a
+# reset line followed by the value.
+const REPEATABLE = [font-family font-family-bold font-family-italic font-family-bold-italic]
 
 # The Ghostty binary, wherever it is; null when there is none.
 #
@@ -97,6 +104,8 @@ export def "ghostty settings" []: nothing -> record {
   | each {|l| $l | str trim }
   | where {|l| ($l | is-not-empty) and not ($l | str starts-with "#") }
   | parse -r '^(?<key>[a-z0-9-]+)\s*=\s*(?<value>.*)$'
+  # A bare `key =` is the reset line before a repeatable key, not a setting.
+  | where {|it| ($it.value | str trim) | is-not-empty }
   | reduce -f {} {|it, acc| $acc | upsert $it.key ($it.value | str trim) }
 }
 
@@ -113,7 +122,9 @@ export def "ghostty set" [
     "# only the keys below are taken out of your hands. `ghostty reset` undoes"
     "# the whole arrangement."
     ""
-  ] ++ ($merged | sort-by key | each {|s| $"($s.key) = ($s.value)" }) ++ [""])
+  ] ++ ($merged | sort-by key | each {|s|
+    if $s.key in $REPEATABLE { [$"($s.key) = " $"($s.key) = ($s.value)"] } else { [$"($s.key) = ($s.value)"] }
+  } | flatten) ++ [""])
   let f = (ours-path)
   let before = (if ($f | path exists) { open --raw $f } else { null })
   mkdir ($f | path dirname)

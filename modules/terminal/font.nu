@@ -94,20 +94,21 @@ const FACES = ["Regular" "Bold" "Italic" "BoldItalic"]
 # fail, it silently falls back to the configured font. So the test is whether
 # the face it names is the family we asked for. 26 ms per call.
 #
-# `font-family` is a repeatable key — a LIST of families, first match wins —
-# and a command-line flag appends to the list the config already built. So with
-# any `font-family =` configured (the user's own, or the one `font use` writes)
-# `--font-family=X` alone is answered with the configured family for every X,
-# and every font reads as "not installed". An empty `--font-family=` first
-# empties the list, which is Ghostty's documented way to reset a repeatable
-# key. Verified with Ghostty 1.3.1, 2026-09-19: without the reset, FiraCode
-# (installed) came back as "JetBrainsMono Nerd Font Mono"; with it, as
-# "FiraCode Nerd Font", and a family that is not installed as Ghostty's
-# built-in "JetBrains Mono".
+# `font-family` is a repeatable key — a LIST of families, first found wins —
+# and Ghostty builds that list as: its default config files, then the command
+# line, then the files those include (`config-file`). So a `--font-family=X`
+# on the command line lands behind whatever the user's config set, and in
+# front of whatever our included file sets — an empty `--font-family=` reset
+# clears the user's entry but not ours, and once `font use` has written a
+# family every other font read as "not installed". `--config-default-files=
+# false` loads no configuration at all, so the answer is about X alone.
+# Verified with Ghostty 1.3.1, 2026-09-19: an installed family comes back as
+# itself, one that is not as Ghostty's built-in "JetBrains Mono", whatever
+# the user's config and ours say.
 export def "font face" [family: string]: nothing -> any {
   let g = (ghostty-bin)
   if $g == null { return null }
-  ^$g +show-face "--font-family=" $"--font-family=($family)" --string=A
+  ^$g +show-face --config-default-files=false $"--font-family=($family)" --string=A
   | parse -r 'found in face .(?<face>[^“”"]+).'
   | get -o 0.face
 }
