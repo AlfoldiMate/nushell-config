@@ -9,11 +9,14 @@
 #   nu-config upgrade             pull the distro; `upgrade check | status` around it
 #   nu-config edit                open the distro in $EDITOR
 #   nu-config edit user           open your own config directory
+#   nu-config user init           (re)generate your directory's READMEs, examples and settings.nu
 #
 # `help nu-config` lists everything.
 
 # Tool init files: `nu-config tools setup | status | remove | dir`
 export use tools.nu *
+# Your directory as a scaffold: `nu-config user init | status | render | set`
+export use user.nu *
 # Is the checkout behind its remote: `nu-config upgrade | check | status`
 export use upstream.nu *
 # Completion caches, for `doctor`.
@@ -108,6 +111,14 @@ export def doctor []: nothing -> nothing {
   let vdir = (tools dir)
   let vmark = if ($nu.vendor-autoload-dirs | any {|d| ($d | path expand) == ($vdir | path expand) }) { $ok } else { $bad }
   print $"  vendor    ($vmark) ($vdir)"
+  # The scaffold: the READMEs, the examples and settings.nu that `user init`
+  # writes, judged by content against the templates, never by mtime.
+  let missing = (user status | where state == "missing" | length)
+  if $missing == 0 {
+    print $"  scaffold  ($ok) complete"
+  } else {
+    print $"  scaffold  (ansi yellow)??(ansi reset) ($missing) file(if $missing == 1 { '' } else { 's' }) missing — nu-config user init"
+  }
   print ""
 
   print $"(ansi cyan_bold)Search paths(ansi reset)  \(yours first\)"
@@ -313,16 +324,12 @@ export def edit []: nothing -> nothing {
 }
 
 # Open your own config directory in $EDITOR — settings.nu, autoload/,
-# completions/, themes/ are all yours and belong in one view — creating
-# settings.nu from the template if this is the first time, so the file to
-# start with is there when the editor opens.
+# completions/, themes/ are all yours and belong in one view — after `user
+# init`, so that settings.nu and the README in every directory are there when
+# the editor opens. Nothing you have is touched; what init did is printed.
 export def "edit user" []: nothing -> nothing {
   let root = (user-root)
-  let f = ($root | path join settings.nu)
-  if not ($f | path exists) {
-    let template = ((distro-root) | path join templates settings.nu)
-    if ($template | path exists) { cp $template $f } else { "" | save -f $f }
-  }
+  for r in (user init | where action != "kept") { print $"  ($r.action) ($r.file)  ($r.note)" }
   let ed = (editor-argv)
   ^($ed | first) ...($ed | skip 1) $root
 }
@@ -472,24 +479,10 @@ def module-sets []: nothing -> record<enabled: list<string>, lazy: list<string>>
   }
 }
 
-# Write `const NAME = [a b c]` into your settings.nu, replacing the line if it
-# is already there (commented or not) and appending it otherwise.
+# `const NAME = [a b c]` into your settings.nu, in place: `user set` replaces
+# the knob's line, commented or live, so the value lands in its own section.
 def set-const-list [name: string, values: list<string>]: nothing -> nothing {
-  let f = ((user-root) | path join settings.nu)
-  if not ($f | path exists) {
-    let template = ((distro-root) | path join templates settings.nu)
-    if ($template | path exists) { cp $template $f } else { "" | save -f $f }
-  }
-  let line = $"const ($name) = [($values | str join ' ')]"
-  let src = (open --raw $f | lines)
-  let hit = ($src | enumerate | where {|r| $r.item =~ $'^\s*#?\s*const\s+($name)\s*=' } | get -o 0)
-  let out = if $hit == null {
-    $src ++ ["" $"# set by `nu-config module` on (date now | format date '%Y-%m-%d')" $line]
-  } else {
-    $src | update $hit.index $line
-  }
-  $out | str join (char nl) | save -f $f
-  print $"  ($f | path basename): ($line)"
+  user set $"const ($name) = [($values | str join ' ')]"
 }
 
 # Turn a module on. `--lazy` loads it on first mention instead of at startup.

@@ -14,11 +14,17 @@ path add "/opt/some-work-tool/bin"
 $env.config.show_banner = "short"
 ```
 
+`example.nu.off` is a complete drop-in — an alias, a `path add`, a keybinding,
+one `$env.config` leaf — with a comment per line saying why each is here and
+not in `settings.nu`. Rename it `example.nu` and the next shell loads it; as
+`.off` it is inert. [Write an autoload drop-in](../../../docs/cookbook/autoload.md)
+is the page, with the keybinding and hook forms and how to check one.
+
 ## autoload/ or settings.nu?
 
-- **A value** the distro ships a default for → `../settings.nu`. It is sourced
-  early, so the rest of the config reads your value. `nu-config knobs` lists
-  them.
+- **A value** the distro ships a default for → [`../settings.nu`](../settings.nu).
+  It is sourced early, so the rest of the config reads your value.
+  `nu-config knobs` lists them.
 - **Behaviour** — a hook, a keybinding, an alias, a `def`, an environment
   variable the distro knows nothing about → here.
 

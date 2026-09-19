@@ -1,0 +1,72 @@
+# hello — completion for a tool that does not exist, as the shape to copy.
+#
+#   subcommands, flags   the spec below, a literal                       (free)
+#   people               the home directories on this machine, `ls`     (1 ms, memoised 10 s)
+#
+# Rename this file hello.nu and add `use hello.nu *` to settings.nu: `hello `
+# Tab then offers greet and wave, `hello greet ` Tab the people, `hello greet
+# --lang ` Tab the three languages. As .off it is inert. The file is named
+# after the tool because the extern at the bottom is `main`, and `main` in
+# hello.nu is the command `hello`.
+# Anything the spec has no opinion on goes to carapace (`fallback: external`).
+# ../../../docs/reference/completion-spec.md is the format; the shipped
+# ../../../completions/git.nu is the same shape against a real tool.
+
+use nu-complete *
+
+# ── Sources ───────────────────────────────────────────────────────────────────
+
+# A live positional: read from disk, never typed into the spec. Memoised for
+# ten seconds under a key, so the menu's re-run on every keystroke costs
+# nothing; the key names the tool, the slot, and what the answer depends on.
+def people []: nothing -> list<record> {
+  nu-complete cache "hello:people" 10sec {
+    ls ($nu.home-dir | path dirname)
+    | where type == dir
+    | each {|d| { value: ($d.name | path basename), description: $"home at ($d.name)" } }
+  }
+}
+
+# ── The spec ──────────────────────────────────────────────────────────────────
+
+# Exported, so `nu-complete hello spec | get subcommands.greet` is a debugging
+# session rather than a guess.
+export def "nu-complete hello spec" []: nothing -> record {
+  {
+    description: "Say hello — a fictional tool"
+    fallback: "external"
+    # Root flags apply to every subcommand. A flag with `arg` takes a value;
+    # a list is an enum, a name is an entry of `sources`, "files" is a path.
+    flags: [
+      { name: "--verbose", short: "-v", description: "Say more" }
+      { name: "--config", short: "-c", description: "Read another config file", arg: "files" }
+    ]
+    sources: { people: {|ctx| people } }
+    subcommands: {
+      greet: {
+        description: "Greet one person"
+        positionals: [ "people" ]                    # the first positional, by source name
+        flags: [
+          { name: "--lang", short: "-l", description: "Language of the greeting", arg: [en fr de] }
+          { name: "--shout", description: "In capitals" }
+        ]
+      }
+      wave: {
+        description: "Wave at everyone named"
+        rest: "people"                                # every positional after the first
+      }
+    }
+  }
+}
+
+# `null` on any failure: Nushell then falls back to files rather than to
+# nothing. The parameter names and the inner `try`s are load-bearing on both
+# 0.115.1 and 0.115.2 — completion-spec.md, "The completer's input".
+def complete-hello [token, place?, buffer?] {
+  try { nu-complete run (nu-complete hello spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+}
+
+# `main`, because a module cannot export an extern of its own name:
+# `use hello.nu *` then yields `hello`.
+@complete "complete-hello"
+export extern main [...args]

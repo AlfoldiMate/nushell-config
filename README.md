@@ -39,7 +39,7 @@ delete the three-line `config.nu` it wrote and delete the checkout.
 nu-config doctor             # both directories, every path, parse, tools, theme, plugins, modules, startup time
 theme                        # a hundred palettes; the window you are in is the preview
 font                         # fifteen Nerd Fonts, installed on the spot, previewed in a window of their own
-nu-config edit user          # your directory: settings.nu is created from a commented template
+nu-config edit user          # your directory: a README in every directory, settings.nu with every knob commented out
 nu-config knobs              # every value the distro ships, and whether you changed it
 nu-config upgrade            # git pull; a shell tells you when there is something to pull
 ```

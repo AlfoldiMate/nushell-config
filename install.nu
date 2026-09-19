@@ -12,9 +12,11 @@
 # What it builds
 #
 #   <config dir>/config.nu     three lines, pointing here      ← Nushell loads this
-#   <config dir>/settings.nu   your overrides — and ONLY your overrides
-#   <config dir>/autoload/     your drop-ins
-#   <config dir>/completions/  what you fetch later
+#   <config dir>/settings.nu   every knob, commented out — and ONLY your overrides live
+#   <config dir>/README.md     what every file and directory is, and whose
+#   <config dir>/autoload/     your drop-ins, with a README and an example
+#   <config dir>/completions/  what you fetch or write later, same
+#   <config dir>/themes/ modules/ plugins/   yours, each with a README
 #
 # The config dir is Nushell's own (~/.config/nushell on Linux, ~/Library/
 # Application Support/nushell on macOS, %APPDATA%\nushell on Windows), because
@@ -23,10 +25,11 @@
 # `git pull` is always clean.
 #
 # The test that the layering is right: accept every default and your
-# settings.nu ends up with no assignments in it at all — `nu-config knobs
-# --overridden` comes back empty. Nothing is copied out of defaults.nu "so you
-# can see it"; what you never mention keeps its shipped value, including values
-# added by a later `git pull`.
+# settings.nu ends up with no live assignment in it at all — `nu-config knobs
+# --overridden` comes back empty. Every knob IS in it, commented out at its
+# shipped value, so the file is the list; a commented line is not a mention,
+# and what you never mention keeps its shipped value, including values added
+# by a later `git pull`.
 #
 # Migrating from the older layout, where this checkout WAS the config dir, is
 # handled: history, the plugin registry and autoload/ are moved out, and the
@@ -335,6 +338,7 @@ def plan-lines [plan: record]: nothing -> list<string> {
   let settings = (settings-block $plan)
   ([
     $"write ($plan.user | path join config.nu), pointing at ($ROOT)"
+    "the scaffold: settings.nu with every knob commented out, a README per directory, the examples"
     (if ($settings | is-empty) {
       "settings.nu: no overrides — every value stays the distro's"
     } else {
@@ -523,45 +527,27 @@ def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh] {
     }
   }
 
-  write-settings ($user | path join settings.nu) $overrides --dry-run=$dry_run --fresh=$fresh
+  # The scaffold — settings.nu, a README per directory, the examples — is
+  # `nu-config user init`, the same command a user runs after an upgrade or
+  # after deleting a README, so the installer and the command cannot drift.
+  # It writes what is missing and nothing else; on a dry run over a layout
+  # being replaced (--fresh) the directory is about to be empty, whatever the
+  # old symlink still shows.
+  for r in (nu-config user init --dir $user --dry-run=$dry_run --fresh=$fresh) {
+    let note = (if ($r.note | is-empty) { "" } else { $"  ($r.note)" })
+    print $"  ($r.action | fill --width 13) ($r.file)($note)"
+  }
 
-  for d in [autoload completions themes modules plugins] {
-    let p = ($user | path join $d)
-    if not ($p | path exists) {
-      print $"  creating ($d)/"
-      if not $dry_run { mkdir $p }
+  # The overrides, each replacing the knob's commented line in its own section
+  # — so an installed settings.nu reads as the knob list with your choices
+  # live in it, not as a template with a tail. A choice equal to the shipped
+  # value produced no line at all (settings-block), which is what keeps an
+  # untouched knob tracking the distro across a `git pull`.
+  if ($overrides | is-not-empty) {
+    print $"  settings.nu: ($overrides | length) override\(s\)"
+    for o in $overrides {
+      if $dry_run { print $"    ($o)" } else { nu-config user set --dir $user $o }
     }
   }
-
-  # Explain the drop-in layer where someone will actually find it.
-  let ar = ($user | path join autoload README.md)
-  if not ($ar | path exists) {
-    if not $dry_run { cp ($ROOT | path join templates autoload-README.md) $ar }
-  }
   print ""
-}
-
-# settings.nu is the template's header — which is guidance, all of it commented
-# — plus the chosen overrides and nothing else. An existing one is never
-# rewritten: it is yours, and the overrides are appended under a dated mark so
-# it is obvious what put them there.
-def write-settings [file: path, overrides: list<string>, --dry-run, --fresh] {
-  let exists = (not $fresh) and ($file | path exists)
-  if $exists and ($overrides | is-empty) {
-    print "  settings.nu is yours — left alone"
-    return
-  }
-  let head = if $exists { (open --raw $file | str trim --right --char (char nl)) } else {
-    (open --raw ($ROOT | path join templates settings.nu) | str trim --right --char (char nl))
-  }
-  let body = if ($overrides | is-empty) { [] } else {
-    ["" $"# chosen with `nu install.nu` on (date now | format date '%Y-%m-%d')"] ++ $overrides
-  }
-  if ($overrides | is-empty) {
-    print "  writing settings.nu — no overrides, every value stays the distro's"
-  } else {
-    print $"  writing settings.nu with ($overrides | length) override\(s\):"
-    for o in $overrides { print $"    ($o)" }
-  }
-  if not $dry_run { ([$head] ++ $body ++ [""]) | str join (char nl) | save -f $file }
 }

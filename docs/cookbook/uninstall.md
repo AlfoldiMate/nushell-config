@@ -47,7 +47,7 @@ needed any of it removed:
 
 | | keep or remove |
 |---|---|
-| `settings.nu`, `autoload/`, `completions/`, `themes/`, `modules/`, `plugins/` | yours. `settings.nu` and `autoload/README.md` came from templates, but you own them now |
+| `settings.nu`, `autoload/`, `completions/`, `themes/`, `modules/`, `plugins/` | yours. `settings.nu`, the READMEs and the `.off` examples came from the distro's `templates/user/`, but you own them now; nothing reads them once the distro is gone |
 | `history.sqlite3`, `plugin.msgpackz` | Nushell's own; a plain `nu` goes on using them |
 | `vendor/autoload/*.nu` | generated init files for zoxide, atuin, carapace. Nushell loads them without the distro too, so remove them if you do not want those tools wired: `nu-config tools remove <tool>` for each before step 2, or `rm` after |
 | `.state/` | the theme render, the update check, agent sessions, the OData registry. Nothing reads them once the distro is gone; `rm -rf` |

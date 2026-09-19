@@ -30,7 +30,10 @@ nu .claude/skills/completion/scripts/verify.nu git --oracle carapace   # every s
 
 ## By hand
 
-The worked example is `starship`: thirteen subcommands from `--help`, and
+`<your dir>/completions/hello.nu.off` is the shape with nothing real in it:
+a fictional `hello` with two subcommands, an enum flag and a positional read
+from disk. Rename it, `use hello.nu *`, and `hello ` Tab works; edit it into
+a real tool. The worked example below is `starship`: thirteen subcommands from `--help`, and
 `starship preset <Tab>` should offer the preset names, which `starship
 preset --list` prints in 4 ms.
 

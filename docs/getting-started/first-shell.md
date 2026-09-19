@@ -22,12 +22,14 @@ and you only ever edit one of them:
 ```
 YOUR config directory                     THE DISTRO (a git checkout)
   config.nu        3 lines, points here ──▶  distro.nu     entrypoint
-  settings.nu      your overrides            defaults.nu   every knob, shipped value
+  settings.nu      every knob, commented     defaults.nu   every knob, shipped value
   autoload/*.nu    drop-ins, loaded last     conf/  modules/  completions/  themes/
 ```
 
-`nu-config edit user` opens yours. The checkout is read-only to you; `git
-pull` updates it without touching your files ([Layout](../concepts/layout.md)).
+`nu-config edit user` opens yours; its `README.md` says what every file
+there is, and each directory has one of its own. The checkout is read-only
+to you; `git pull` updates it without touching your files
+([Layout](../concepts/layout.md)).
 
 ## What is on the keys
 

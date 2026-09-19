@@ -1,14 +1,16 @@
 # Knobs
 
 Every value the distro ships, and where to change it. `defaults.nu` is the
-file: read it, copy a line into your `settings.nu`, change it there. A knob
-you never mention keeps its shipped value, including one added by a later
-`git pull` ([Layout](../concepts/layout.md#how-the-layering-works)).
+file, and your `settings.nu` is the same list commented out — generated from
+`defaults.nu` and the module `meta.nuon`s by `nu-config user init`, so the two
+cannot disagree: uncomment a line, change it. A knob you never mention keeps
+its shipped value, including one added by a later `git pull`, which the next
+`user init` appends commented ([Layout](../concepts/layout.md#how-the-layering-works)).
 
 ```nu
 nu-config knobs              # every knob, its kind, its owner, and whether you set it
 nu-config knobs --overridden # just yours
-nu-config edit user          # your directory; settings.nu is created the first time
+nu-config edit user          # your directory; settings.nu has every knob, commented
 config nu --doc | nu-highlight | less -R   # every $env.config key Nushell has, whether the distro mentions it or not
 ```
 

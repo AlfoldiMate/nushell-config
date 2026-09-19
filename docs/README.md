@@ -45,7 +45,7 @@ unless it says otherwise; nothing is estimated. Nushell **0.115**.
 | [Completion specs](reference/completion-spec.md) | the spec format, sources, caching, the parse budget, the completer's input |
 | [Platforms](reference/platforms.md) | what is proven on macOS, Linux and Windows, and what is not |
 | **Modules** | |
-| [nu-config](reference/modules/nu-config.md) | `doctor`, `knobs`, `module`, `tools`, `plugins`, `upgrade`, `startup-time`, `edit` |
+| [nu-config](reference/modules/nu-config.md) | `doctor`, `knobs`, `module`, `user`, `tools`, `plugins`, `upgrade`, `startup-time`, `edit` |
 | [nu-complete](reference/modules/nu-complete.md) | the engine behind Tab: `run`, `spans`, `smart`, `quote`, `cache`, `status` |
 | [terminal](reference/modules/terminal.md) | `theme`, `ghostty`, `font`, `terminal` — every command, with costs |
 | [agent](reference/modules/agent.md) | `ask`, `exec`, `skill`, `command`, `completion`; the exec menu; the knobs |
@@ -58,6 +58,7 @@ unless it says otherwise; nothing is estimated. Nushell **0.115**.
 | [Add Tab completion for a tool](cookbook/add-completion.md) | `agent completion <tool>`, or a spec by hand — `starship` worked through |
 | [Override a shipped completion](cookbook/override-completion.md) | copy it into your `completions/`; everything shadows by name |
 | [Write an autoload drop-in](cookbook/autoload.md) | an alias, a hook, a keybinding, a secret — and when it is `settings.nu` instead |
+| [Your directory](cookbook/user-directory.md) | what is there and whose, switching an example on, getting a README back, the knobs an upgrade added |
 | [Pick a theme and make it stick](cookbook/theme.md) | the picker, a palette of your own from six colours, keeping it after a `git pull` |
 | [Pin a font](cookbook/font.md) | `font use`, and installing one by hand on Linux and Windows |
 | [Enable a module, make it lazy, see what it costs](cookbook/modules.md) | `module enable`, `MODULES_LAZY`, `startup-time`, `loaded-files` |

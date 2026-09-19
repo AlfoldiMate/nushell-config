@@ -59,10 +59,11 @@ its own. Every role you do not name is blended from the Ghostty theme's own
 hexes (tier two), and the sixteen stay the terminal's (tier one), so six
 colours is a complete palette.
 
-For a theme that is entirely yours, copy one of NvChad's
-(`themes/palettes/nvchad/tokyonight.nuon` in the checkout) and change the
-`terminal` block — all sixteen plus background, foreground, cursor and
-selection — and `theme use` writes it as a Ghostty theme file too.
+For a theme that is entirely yours, `<your dir>/themes/palettes/example.nuon.off`
+is one already: rename it and `theme use Example` renders it. Its `terminal`
+block — all sixteen plus background, foreground, cursor and selection — is
+what makes it a Ghostty theme file too; NvChad's
+(`themes/palettes/nvchad/tokyonight.nuon` in the checkout) have the same shape.
 
 Check it before you keep it:
 

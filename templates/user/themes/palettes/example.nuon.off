@@ -1,0 +1,56 @@
+# example.nuon.off — a palette of your own, complete. Rename it example.nuon
+# and `theme use Example` renders it for Ghostty, the app icon, tables, ls,
+# bat and the prompt; as .off it is inert, because the palette reader opens
+# only *.nuon. The file's stem must be the slug of `name` (`theme slug`).
+#
+# Two halves. `terminal` makes this a terminal theme of its own — the sixteen,
+# background, foreground, cursor, selection — which `theme use` writes as a
+# Ghostty theme file. `roles` is what the SHELL reads: six of the roles named
+# from `colours`, the rest blended from background and foreground, and the
+# sixteen always the terminal's own, by name. To borrow the sixteen from a
+# theme Ghostty ships instead, drop `terminal` and say `ghostty: "Gruvbox
+# Dark"`. ../../../../docs/concepts/theming.md has every role.
+{
+  name: Example
+  dark: true
+  bat: "ansi"                            # a theme bat ships; "ansi" follows the terminal
+  terminal: {
+    black: "#1b1e28"
+    red: "#e06c75"
+    green: "#98c379"
+    yellow: "#e5c07b"
+    blue: "#61afef"
+    magenta: "#c678dd"
+    cyan: "#56b6c2"
+    white: "#d7dae0"
+    bright_black: "#5c6370"
+    bright_red: "#ec8b93"
+    bright_green: "#b0d08e"
+    bright_yellow: "#efd196"
+    bright_blue: "#83c2f5"
+    bright_magenta: "#d59ae8"
+    bright_cyan: "#7ccad3"
+    bright_white: "#f0f2f5"
+    background: "#1b1e28"
+    foreground: "#d7dae0"
+    cursor: "#d7dae0"
+    selection_background: "#3b4252"
+    selection_foreground: "#d7dae0"
+  }
+  colours: {
+    sky: "#61afef"
+    leaf: "#98c379"
+    sand: "#e5c07b"
+    rose: "#e06c75"
+    mist: "#7d8597"
+    slate: "#2a2f3d"
+  }
+  roles: {
+    accent: sky                          # headers, the selected row, the prompt's highlight
+    ok: leaf
+    warn: sand
+    err: rose
+    fg_muted: mist                       # hints, comments, the row index
+    border: slate                        # table separators, menu frames
+  }
+}

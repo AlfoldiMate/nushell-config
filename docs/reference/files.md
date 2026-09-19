@@ -14,12 +14,14 @@ user-root` prints it.
 |---|---|---|
 | `config.nu` | `install.nu`, once | three lines: `const DISTRO = …; source ($DISTRO \| path join distro.nu)` |
 | `config.nu.backup-<stamp>` | `install.nu` | the previous `config.nu`, when there was one |
-| `settings.nu` | you (`nu-config edit user` creates it from `templates/settings.nu`) | your knob values, sourced right after `defaults.nu` |
-| `autoload/*.nu` | you | drop-ins Nushell loads last; `autoload/README.md` is a copy of `templates/autoload-README.md` |
-| `completions/` | you, or `nu-config fetch completion <tool>` | completion modules; first on `NU_LIB_DIRS` |
-| `modules/` | you | modules of your own, `use`d from `settings.nu` |
-| `themes/` | you | a copy of any template in the distro's `themes/`, or `palettes/<slug>.nuon` of your own |
-| `plugins/` | you | plugin binaries; first on `NU_PLUGIN_DIRS` |
+| `README.md` | `nu-config user init`, when missing | what every file and directory here is, and whose |
+| `settings.nu` | `nu-config user init`, when missing; then you | every knob in `defaults.nu` and every module's `meta.nuon`, commented out at its shipped value — generated, not copied; uncomment to override. Sourced right after `defaults.nu` |
+| `settings.nu.backup-<stamp>` | `nu-config user init --force settings.nu` | the one replaced |
+| `autoload/*.nu` | you | drop-ins Nushell loads last. `README.md` and `example.nu.off` are the scaffold's |
+| `completions/` | you, or `nu-config fetch completion <tool>` | completion modules; first on `NU_LIB_DIRS`. `README.md` and `hello.nu.off` are the scaffold's |
+| `modules/` | you | modules of your own, `use`d from `settings.nu`. `README.md` is the scaffold's |
+| `themes/` | you | a copy of any template in the distro's `themes/`, or `palettes/<slug>.nuon` of your own. `README.md` and `palettes/example.nuon.off` are the scaffold's |
+| `plugins/` | you | plugin binaries; first on `NU_PLUGIN_DIRS`. `README.md` is the scaffold's |
 | `history.sqlite3` | Nushell | history (`history.file_format = "sqlite"`) |
 | `plugin.msgpackz` | `plugin add`, `nu-config plugins add` | the plugin registry, protocol-versioned against `nu` |
 | `vendor/autoload/*.nu` | `nu-config tools setup` | generated init files: `zoxide.nu`, `atuin.nu`, `carapace.nu`, … one per installed tool |
@@ -28,6 +30,17 @@ user-root` prints it.
 On macOS `$nu.data-dir` is the config directory, so `vendor/` and `.state/`
 sit next to `config.nu`; on Linux they are under `~/.local/share/nushell`.
 `nu-config doctor` prints every one of these paths.
+
+The scaffold — the READMEs, the three `.off` examples and `settings.nu` — is
+`templates/user/` in the checkout, mirrored file for file, rendered by
+`nu-config user init`: `@DISTRO@` becomes the checkout, and every relative
+path in a template, written for the template's place in the checkout, is
+rewritten for the file's place in your directory, so a link into `docs/`
+works on GitHub and in your editor alike. `settings.nu`'s body is generated
+from `defaults.nu` and the module `meta.nuon`s rather than copied. Init
+writes only what is missing; `user status` tells `present` from `edited` by
+comparing with what init would write today, never by mtime
+([nu-config](modules/nu-config.md#your-directory)).
 
 ## State: `$nu.data-dir/.state/`
 

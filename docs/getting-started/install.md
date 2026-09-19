@@ -60,8 +60,12 @@ itself, which is what makes `curl … | sh` work without a flag.
 
 - a three-line `config.nu` into Nushell's config directory, pointing at the
   checkout (the previous one is kept as `config.nu.backup-<stamp>`)
-- a `settings.nu` of your own, from a commented template, and an `autoload/`
-  with a README saying what goes there
+- your directory's scaffold: a `settings.nu` with every knob commented out at
+  its shipped value, a `README.md` saying what every file and directory is,
+  one in each of `autoload/`, `completions/`, `themes/`, `modules/` and
+  `plugins/`, and an example per kind that does nothing until renamed —
+  `nu-config user init` writes the same thing again later, for whatever is
+  missing
 - the init files for whichever of zoxide, atuin and carapace are installed
   (`vendor/autoload/`)
 - the plugins that ship next to `nu`, into the plugin registry
@@ -73,8 +77,8 @@ owns is written into your directory except that `config.nu`
 ([Layout](../concepts/layout.md)).
 
 **The test that it went right:** accept every default and `nu-config knobs
---overridden` comes back empty. Your `settings.nu` has no assignments in it,
-against 65 knobs that exist; every value keeps tracking the distro.
+--overridden` comes back empty. Your `settings.nu` lists all 64 knobs (counted 2026-09-19) and
+every one is commented out; every value keeps tracking the distro.
 
 Safe to re-run after every `git pull`, tool install or Nushell upgrade. Undo
 at any time: [Undo the whole thing](../cookbook/uninstall.md).

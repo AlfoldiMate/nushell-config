@@ -1,0 +1,33 @@
+# example.nu.off — a drop-in. Rename it example.nu (any name ending in .nu)
+# and the next interactive shell loads it, last of all; as .off it is inert,
+# because Nushell loads only *.nu from here. ../../../docs/cookbook/autoload.md
+# is the page.
+#
+# Everything below is here rather than in settings.nu because it is BEHAVIOUR
+# the distro ships no default for. settings.nu holds values it does — the
+# knobs, which `nu-config knobs` lists — and nothing else.
+
+# An alias: not a knob, and expanded where it is written. `alias` is parse-
+# time, so it cannot sit inside an `if`.
+alias gs = git status --short
+
+# PATH, for this machine's own tool directory. `path add` prepends, and a
+# directory that does not exist is harmless on PATH.
+path add ($nu.home-dir | path join .local bin)
+
+# A keybinding: APPENDED with `++=`, never assigned — `= [...]` would drop the
+# distro's bindings and Nushell's own. `keybindings listen` prints what
+# Reedline calls the key you press; `keybindings list` every modifier, keycode
+# and event.
+$env.config.keybindings ++= [{
+  name: clear_screen_example
+  modifier: control
+  keycode: char_l
+  mode: [emacs vi_insert vi_normal]
+  event: { send: clearscreen }
+}]
+
+# One $env.config leaf the distro's defaults.nu never mentions, so it is not a
+# knob: nothing lists it, nothing will overwrite it, and this is where it goes.
+# Fuzzy matching means `gsw` finds `git switch`.
+$env.config.completions.algorithm = "fuzzy"

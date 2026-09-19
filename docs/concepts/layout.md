@@ -6,11 +6,12 @@ This configuration is two directories, not one.
 YOUR config directory                     THE DISTRO (a git checkout)
 ~/Library/Application Support/nushell     ~/.local/share/nushell-distro
   config.nu        3 lines, points here ──▶  distro.nu     entrypoint
-  settings.nu      your overrides            defaults.nu   every knob, shipped value
-  autoload/*.nu    drop-ins, loaded last     conf/         behaviour
-  completions/     what you fetched          modules/ completions/ themes/
-  themes/          your themes               templates/    what install.nu writes
-  plugins/         plugins you built         docs/
+  settings.nu      every knob, commented     defaults.nu   every knob, shipped value
+  README.md        what is here, and whose   conf/         behaviour
+  autoload/*.nu    drop-ins, loaded last     modules/ completions/ themes/
+  completions/     what you fetched          templates/user/  the scaffold of the left-hand side
+  themes/          your themes               docs/
+  plugins/         plugins you built
   history.sqlite3, plugin.msgpackz, vendor/, .state/
 ```
 
@@ -94,10 +95,12 @@ knobs cannot be read from a NUON file and why `settings.nu` is `.nu`
 ([Files and formats](../reference/files.md)).
 
 **The test that the layering is right:** accept every default in the installer
-and your `settings.nu` has no assignments in it at all — `nu-config knobs
---overridden` comes back empty, against 65 knobs that exist. Nothing is copied
-out of `defaults.nu` "so you can see it". A value you never mention keeps
-tracking the distro, including across a `git pull` that changes it.
+and your `settings.nu` has no live assignment in it at all — `nu-config knobs
+--overridden` comes back empty, against 64 knobs that exist (2026-09-19). Every knob *is*
+in the file, commented out at its shipped value, so that the file you open is
+the list; but a commented line is not a mention, and a value you never
+mention keeps tracking the distro, including across a `git pull` that changes
+it ([Your directory](../cookbook/user-directory.md)).
 
 ## Values versus behaviour
 
@@ -159,7 +162,8 @@ itself lives in ([Plugins](plugins.md)).
 
 | Want to | Do |
 |---|---|
-| Change a setting | your `settings.nu` — `nu-config edit user` |
+| Change a setting | uncomment it in your `settings.nu` — `nu-config edit user` |
+| See what is in your directory, get a README or an example back | `README.md` there; `nu-config user status`, `nu-config user init` ([Your directory](../cookbook/user-directory.md)) |
 | Add an alias, a hook, a keybinding | a file in your `autoload/`, loaded last |
 | Add a module | drop it in your `modules/`, `use` it from `settings.nu`; [Modules](modules.md) is the contract `nu-config module lint` enforces |
 | Turn a shipped module off | `const MODULES = [...]` without it, or `nu-config module disable <name>` |

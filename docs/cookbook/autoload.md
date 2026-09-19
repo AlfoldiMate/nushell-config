@@ -21,7 +21,9 @@ not a knob and belongs with the rest of your behaviour.
 ## Write one
 
 `nu-config edit user` opens your directory; `autoload/README.md` is already
-there. Say `autoload/local.nu`:
+there, and so is `autoload/example.nu.off` — an alias, a `path add`, a
+keybinding and one `$env.config` leaf, with a comment per line saying why
+each is here. Rename it and it loads. Or say `autoload/local.nu`:
 
 ```nu
 # local.nu — this machine only

@@ -5,12 +5,13 @@ its `defaults.nu`, and the way to change one is to say so in **your**
 `settings.nu`:
 
 ```nu
-nu-config edit user          # your directory in $EDITOR; settings.nu is created from a commented template the first time
+nu-config edit user          # your directory in $EDITOR; settings.nu holds every knob, commented out
 nu-config knobs              # every knob, its shipped value, and whether you set it
 nu-config knobs --overridden # just yours
 ```
 
-Say you want emacs keys and a plain table border. In `settings.nu`:
+Say you want emacs keys and a plain table border. Both lines are already in
+`settings.nu`, commented out in their sections; uncomment and change them:
 
 ```nu
 $env.config.edit_mode = "emacs"

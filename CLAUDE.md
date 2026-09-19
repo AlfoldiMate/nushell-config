@@ -47,6 +47,13 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
 - Generated files (`vendor/autoload/*.nu`), `plugin.msgpackz`, history and
   `autoload/*` live in the user's config dir, not here. Change the generator in
   `modules/nu-config/tools.nu`, never the generated file.
+- The user directory's scaffold is `templates/user/` (a README per
+  directory, three `.off` examples, the `settings.nu` header), rendered by
+  `modules/nu-config/scaffold.nu` — a script `user.nu` runs in a `nu -n`, so
+  startup never parses it: `settings.nu`'s body is generated from
+  `defaults.nu` and the module `meta.nuon`s, relative links are rewritten per
+  destination. Edit the template or the generator, never a rendered file;
+  test with `nu -l --config <scratch>/config.nu -c 'nu-config user init'`.
 - Comments explain why, and state measured costs (`timeit`,
   `nu-config startup-time`), not estimates.
 - Nushell makes breaking changes at minor versions. `help <cmd>` and
