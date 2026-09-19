@@ -13,8 +13,8 @@
 # secret — drop a .nu file in autoload/ instead. Those load last and win.
 
 # ── Colours ───────────────────────────────────────────────────────────────────
-# The default, "terminal", is your terminal's own 16 colours, so `nu-config
-# theme` themes the shell by theming Ghostty. Catppuccin brings its own palette
+# The default, "terminal", is your terminal's own 16 colours, so `theme` themes
+# the shell by theming Ghostty. Catppuccin brings its own palette
 # in hex; "dark"/"light" are the standard library's. All three lines move
 # together — VIVID_THEME colours `ls`, BAT_THEME colours `bat` and `help`.
 # const THEME = "catppuccin-macchiato"

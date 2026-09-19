@@ -72,7 +72,7 @@ short allow-list (`ps`, `sys *`, `ls`, `open`, `glob`, `du`, `which`,
 `version`, `history`, `each`, `do`, `if` …). Any external, any redirection,
 any garbage token, and an explicit never-list (`rm`, `save`, `into sqlite`,
 `stor export`, `input`, `sleep`, `source`, `use`, `job spawn` …) refuse. The
-knob in `conf/settings.nu`:
+knob (shipped in `defaults.nu`, overridden in your `settings.nu`):
 
 ```nu
 $env.NU_COMPLETE_EVAL = "safe"   # built-ins only (default)
@@ -85,7 +85,7 @@ columns come from the pipeline without its last stage.
 
 A command whose columns are known without running it can register a
 *provider* instead: `$env.NU_COMPLETE_PROVIDERS = { odata: {|segment| …} }`
-(conf/odata.nu). `probe` hands the provider the first segment and expects
+(`modules/odata`, in its `activate`). `probe` hands the provider the first segment and expects
 the same `[{ columns: { name: { type, value, detailed_type, description? } } }]`
 rows `describe --detailed` would give — several rows when a column has a
 fixed set of values (enum members), a `description` when words beat a
@@ -167,7 +167,8 @@ in `sources`. The engine filters with the user's `completions.algorithm` and
    1-3 ms; `stor import` would wipe the session caches). Regenerate when the
    tool's file is newer (`nu-complete stale target source`); build in a
    `job spawn` and serve something simpler meanwhile, as brew.nu does.
-3. `use <tool>.nu *` in `conf/completions.nu`.
+3. `use <tool>.nu *` — in `conf/completions.nu` for a module the distro ships,
+   in your own `settings.nu` for one of yours.
 4. Test without a terminal:
 
    ```nu

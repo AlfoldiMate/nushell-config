@@ -24,7 +24,7 @@
 # The default Tab menu is a 4-column grid, which is hard to scan for paths.
 # Same name as the default → replaces it: one candidate per line, full width,
 # so `ls <Tab>` and directory completions read as a list. With SMART_TAB
-# (settings.nu) Tab opens smart_menu from conf/completions.nu instead, which
+# (a knob in defaults.nu) Tab opens smart_menu from conf/completions.nu, which
 # copies this look; this one stays for `keybindings` that name it.
 $env.config.menus ++= [{
   name: completion_menu

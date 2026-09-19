@@ -125,7 +125,7 @@ one login shell); the judgement is in `SKILL.md` and its references.
 | `agent commands` (cache + disk scan) | 10 ms |
 | `history \| last 8` (sqlite) | 1 ms |
 | `use agent` at startup | 3 ms (25.2 ms vs 22.5 ms for an empty `nu -n -c`) |
-| startup with the module lazy (stub only) | 88 ms, down from 89 to 94 ms when `conf/agent.nu` parsed the body at startup |
+| startup with the module lazy (stub only) | 88 ms, down from 89 to 94 ms when the module body was parsed at startup |
 | `job spawn` at startup | 66 µs |
 
 ## Knobs

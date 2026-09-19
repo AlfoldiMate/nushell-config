@@ -18,7 +18,7 @@ path add ($nu.home-dir | path join ".local" "bin")
 if "PATH" in $env { $env.PATH = ($env.PATH | uniq) }
 
 # ── Editor ────────────────────────────────────────────────────────────────────
-# First candidate from settings.nu that exists on PATH.
+# First candidate from the EDITORS knob that exists on PATH.
 let editor = ($EDITORS | where {|e| which $e.0 | is-not-empty } | get -o 0)
 if $editor != null {
   $env.EDITOR = ($editor | str join " ")

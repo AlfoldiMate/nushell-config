@@ -1,4 +1,5 @@
-# theme.nu — colours. Pick the theme in settings.nu (THEME, BAT_THEME).
+# theme.nu — colours. The THEME and BAT_THEME knobs pick them (defaults.nu,
+# overridden in your settings.nu).
 #
 # A theme is a file in themes/ in "source style": it assigns
 # $env.config.color_config, and nothing else — a theme must not set behaviour,

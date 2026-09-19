@@ -27,8 +27,9 @@ $env.NU_SMART_TAB = $SMART_TAB
 use brew.nu *     # subcommands, flags, packages with descriptions, installed, taps
 use git.nu *      # subcommands, branches by recency, remotes, changed files, stashes
 use cargo.nu *    # subcommands, flags from --help, packages/targets/features of the workspace, crate names
-# Vendored nu_scripts modules go here too:  nu-config fetch completion docker
-#   use docker-completions.nu *
+# A completion you fetch is YOURS: `nu-config fetch completion docker` saves it
+# in your completions/, which comes first on NU_LIB_DIRS, and you wire it in
+# from your own settings.nu with `use docker-completions.nu *`.
 
 # ── External argument completer ───────────────────────────────────────────────
 # When carapace is installed, its generated init file (nu-config tools setup)
@@ -41,7 +42,7 @@ use cargo.nu *    # subcommands, flags from --help, packages/targets/features of
 # A custom menu is the only kind whose `source` closure gets the whole buffer
 # (a `source` on the stock completion_menu is ignored by Nushell 0.115), so
 # Tab is rebound to this one. Same look as completion_menu in keybindings.nu.
-# SMART_TAB lives in settings.nu.
+# SMART_TAB is a knob in defaults.nu.
 if $SMART_TAB {
   $env.config.menus ++= [{
     name: smart_menu
