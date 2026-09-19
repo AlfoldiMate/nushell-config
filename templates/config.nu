@@ -10,5 +10,5 @@
 # The distro below is a git checkout you do not edit; `git pull` in it picks up
 # new defaults without touching anything here.
 
-const DISTRO = "@DISTRO@"
+const DISTRO = @DISTRO@
 source ($DISTRO | path join distro.nu)

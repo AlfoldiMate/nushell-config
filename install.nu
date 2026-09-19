@@ -409,6 +409,13 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> no
   }
 }
 
+# Does this config.nu source THIS checkout? The path appears in it as a Nushell
+# string literal, so on Windows it is backslash-escaped and a plain `str
+# contains` of the raw path misses it.
+def points-here [text: string, root: path]: nothing -> bool {
+  ($text | str contains $root) or ($text | str contains ($root | to nuon))
+}
+
 # ── Asking ────────────────────────────────────────────────────────────────────
 
 # `input list` rather than a typed y/n: it needs one keystroke, it cannot be
@@ -464,7 +471,10 @@ def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh] {
   # emptied yet, so anything still in it belongs to the layout being replaced.
   let existing = if $fresh { null } else if ($cfg | path exists) { open --raw $cfg } else { null }
 
-  if $existing != null and ($existing | str contains $ROOT) {
+  # Both spellings: the path as written on Unix, and the backslash-escaped
+  # literal on Windows. Checking only one makes a re-run rewrite a config.nu
+  # that was already correct.
+  if $existing != null and (points-here $existing $ROOT) {
     print "  config.nu already points here"
   } else {
     if $existing != null {
@@ -476,7 +486,12 @@ def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh] {
     if not $dry_run {
       mkdir $user
       open --raw ($ROOT | path join templates config.nu)
-      | str replace --all "@DISTRO@" $ROOT
+      # `to nuon`, not the bare path: a DOUBLE-quoted Nushell string processes
+      # escapes, so a Windows checkout at D:\a\nushell-config turned \a into
+      # BEL and \n into a newline and the sourced path did not exist. CI found
+      # it on the first Windows run. `to nuon` emits a valid literal, quotes
+      # included, and handles an apostrophe in the path too.
+      | str replace --all "@DISTRO@" ($ROOT | to nuon)
       | save -f $cfg
     }
   }

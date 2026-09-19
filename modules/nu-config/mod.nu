@@ -60,9 +60,15 @@ export def platform-config-dir []: nothing -> path {
 export def install-status []: nothing -> record<state: string, user: string, distro: string> {
   let u = (user-root)
   let d = (distro-root)
+  let cfg = ($u | path join config.nu)
+  # Two spellings of the same path: as written, and as the backslash-escaped
+  # Nushell string literal that a Windows checkout produces. `str contains $d`
+  # alone reported "other" for a perfectly good split install on Windows.
+  let text = (if ($cfg | path exists) { open --raw $cfg } else { "" })
+  let points_here = ($text | str contains $d) or ($text | str contains ($d | to nuon))
   let state = if $u == $d {
     "in-place"
-  } else if (($u | path join config.nu) | path exists) and ((open --raw ($u | path join config.nu)) | str contains $d) {
+  } else if $points_here {
     "split"
   } else {
     "other"
