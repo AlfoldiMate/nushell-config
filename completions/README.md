@@ -104,8 +104,45 @@ Nothing but the completer reads these files, and the Tab menu source re-runs on
 every keystroke, so the fast format wins here and the rule bends. State a person
 reads or edits stays NUON (`docs/layout.md`, *Formats*).
 
-A module that costs more than ~3 ms to parse is too big for a literal; check with
-`nu -l -c 'nu-config startup-time'`.
+## What it costs to parse
+
+`use` is parse-time: every module here is read and compiled by every shell that
+starts, whether or not you ever touch the tool. So the directory has a budget.
+
+hyperfine, 40 runs, nu 0.115.2, σ ≤ 1.0 ms throughout — each figure is the
+delta from the line above it:
+
+| | |
+|---|---|
+| `nu -n -c ''`, nothing loaded | 12.4 ms |
+| `use nu-complete *` | +9.0 ms — `cache.nu` 0.7, `engine.nu` 2.2, **`smart.nu` 6.1** |
+| `use brew.nu *` | +2.6 ms |
+| `use git.nu *` | +2.1 ms |
+| `use cargo.nu *` | +3.2 ms |
+| all three, measured in a real startup (`nu -l -c ''`, 53.3 ms → 42.9 ms with them commented out) | **10.4 ms** |
+
+**The budget: 3 ms for a module, 20 ms for the directory.** At today's 10.4 ms
+that leaves room for roughly four more tools.
+
+Two things the numbers say that the guesses did not. Most of the cost is
+**code, not data**: `brew.nu` keeps its whole subcommand tree in JSON and still
+costs 2.6 ms, while `cargo.nu`, which has no static tree at all, costs the
+most. So moving a literal to `completions/data/<tool>.json` buys less than it
+looks like — do it when a literal is genuinely large (the JSON parser is ~6x
+faster per byte than NUON's, measured above), not as a way under the budget.
+And the module to watch is `smart.nu`, which is not a tool spec at all: it is
+more than half of what completion costs a shell that never presses Tab.
+
+If the directory ever does pass 20 ms, the way out is not a lazy module.
+An `@complete` extern must exist at parse time to be attached to a command, so
+the module cannot be deferred. A *spec* can: `nu-complete run` takes a plain
+record, so a tool can live as `completions/data/<tool>.json` with no module and
+no extern at all, dispatched on the first word of the line by the Tab menu
+source — which is a runtime closure and already sees the whole line. That
+trades ~2.5 ms at every startup for the cost of reading the spec on the Tab
+presses that actually hit it — 1.2-1.7 ms for the 195 kB `brew-spec.json`,
+measured above and again on 2026-09-19. Unbuilt, deliberately: the directory is
+at half its budget.
 
 ## The spec format
 
