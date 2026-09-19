@@ -1,5 +1,18 @@
 # Nushell distro
 
+<p align="center"><img src="docs/assets/demo.gif" width="960" alt="One Ghostty window: Tab offers the columns of a pipeline, brew formulae with descriptions and crates; theme use recolours the window live, font use swaps the font, an OData query is pushed to the server, agent exec turns a sentence into a pipeline"></p>
+
+One window, a hundred seconds, one cut (six seconds of waiting for Claude).
+Tab after `ls | where` offers
+the columns, each with its type and a sample value; `brew install` completes
+sixteen thousand formulae with their descriptions; `theme use` recolours the
+terminal you are sitting in — prompt, tables, `ls`, the app icon — and
+`font use` swaps the font in every open window; `odata People | where … |
+select … | first 4` sends the server one request with `$filter`, `$select`
+and `$top`; and `agent exec` turns a sentence into a pipeline that you run
+with Enter. Every keystroke is real; the shell is the one this repo installs,
+on its shipped defaults, recorded 2026-09-19.
+
 A [Nushell](https://www.nushell.sh) configuration you **install** rather than
 copy. The distro is a git checkout you never edit; your settings live in your
 own config directory, in a file the distro does not ship, and a `const` there
