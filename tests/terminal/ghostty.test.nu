@@ -139,8 +139,21 @@ def "test shell makes nu the command and --reset drops it" [] {
   ghostty shell
   assert equal (ghostty settings | get command) (ghostty nu-path)
   assert equal (ghostty status | get shell) (ghostty nu-path)
+  # On macOS the right Option key becomes Alt with it, unless they said otherwise.
+  assert equal (ghostty settings | get -o macos-option-as-alt) (if $nu.os-info.name == "macos" { "right" } else { null })
   ghostty shell --reset
   assert equal (ghostty settings | get -o command) null
+  assert equal (ghostty settings | get -o macos-option-as-alt) null
+}
+
+def "test shell leaves an Option key they configured alone" [] {
+  if $nu.os-info.name != "macos" { skip-test "macos-option-as-alt is a macOS key" }
+  let fake = fake-ghostty
+  "macos-option-as-alt = left
+" | save ($fake.config | path join config.ghostty)
+  ghostty shell
+  assert equal (ghostty settings | get -o macos-option-as-alt) null "theirs stands"
+  assert equal (ghostty live macos-option-as-alt) "left"
 }
 
 def "test reload asks Ghostty over AppleScript on macOS and is false elsewhere" [] {

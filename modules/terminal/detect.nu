@@ -32,7 +32,12 @@ def registry []: nothing -> table {
       install: {
         macos: { run: [brew install --cask ghostty], needs: "brew", note: "or https://ghostty.org/download" }
         linux: { run: null, needs: null, note: "your distribution's package, or https://ghostty.org/download" }
-        windows: { run: null, needs: null, note: "Ghostty has no Windows build yet — https://ghostty.org/download" }
+        # No official build (the port is in progress upstream: ghostty-org/ghostty
+        # discussion #2563). The Win32 ports on GitHub are personal forks the
+        # Ghostty team has asked not to carry its name and has not endorsed, so
+        # nothing is downloaded from one here; a user who installs one puts
+        # ghostty.exe on PATH and the module finds it. Checked 2026-09-19.
+        windows: { run: null, needs: null, note: "no official Windows build yet (github.com/ghostty-org/ghostty/discussions/2563); the shell works in Windows Terminal meanwhile" }
       }
     }
   ]

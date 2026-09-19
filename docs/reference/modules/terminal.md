@@ -9,7 +9,8 @@ theme --ghostty                # or from Ghostty's own 463
 font                           # pick a Nerd Font, install it, see it in a real window
 theme use tokyonight           # or name one; Tab completes them
 theme roles                    # what the shell made of it: every role, its colour, which tier
-ghostty shell                  # a new Ghostty window starts Nushell
+ghostty shell                  # a new Ghostty window starts Nushell; right Option is Alt
+font use JetBrainsMono --size 15   # or `font size 15` on its own
 ghostty status                 # what this distro has written into Ghostty's config
 ```
 
@@ -41,7 +42,7 @@ questions `install.nu` asks before any of them runs.
 | `theme resolve [name]` | the resolved theme as data, nothing written |
 | `theme names [--ghostty]` | the names alone — palettes, or Ghostty's. Tab on a `<name>` offers the palettes, or Ghostty's once `--ghostty` is on the line |
 | `ghostty status` | the config Ghostty reads, what we own in it, and the theme and shell Ghostty resolves |
-| `ghostty shell [--reset]` | make Nushell what a new window starts; `--reset` hands that back to `SHELL` / passwd |
+| `ghostty shell [--reset]` | make Nushell what a new window starts, and on macOS the right Option key Alt unless your config already says (`macos-option-as-alt`); `--reset` hands both back |
 | `ghostty nu-path` | the nu that `shell` writes: the one on PATH, not the running binary |
 | `ghostty set <record>` | write keys into our own included file (a null value removes one) |
 | `ghostty reset` | remove our file and the one include line; their config is left as it was |
@@ -54,7 +55,8 @@ questions `install.nu` asks before any of them runs.
 | `font install <name>` | Homebrew's cask on macOS, the release archive otherwise |
 | `font preview <name>` | a new Ghostty window in that font, showing a specimen |
 | `font specimen` | the sample text in the font this terminal is using now |
-| `font use <name>` | install if needed, then keep it |
+| `font use <name> [--size N]` | install if needed, then keep it — with a point size, when given |
+| `font size [N] [--reset]` | the size alone: show what Ghostty uses, set it (halves are fine, 4..72), or `--reset` to hand it back |
 | `font face <family>` | the face Ghostty would actually use for a family |
 
 Theme names are Tab-completable everywhere they are taken.

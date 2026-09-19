@@ -5,7 +5,8 @@
 #   font install <name>     download and install it, after asking
 #   font preview <name>     a real Ghostty window in that font, showing a specimen
 #   font specimen           the sample text, in the font this terminal is using now
-#   font use <name>         install if needed, then keep it (ghostty.nu persists it)
+#   font use <name> [-s N]  install if needed, then keep it (ghostty.nu persists it), at a size
+#   font size [N|--reset]   the point size alone: show, set, or hand it back to Ghostty
 #
 # Why a new window is the preview
 #
@@ -346,13 +347,47 @@ export def "font preview" [name: string@font-names]: nothing -> nothing {
 # Keep a font: Ghostty's config, then `ghostty reload` so every open window
 # takes it — on macOS, where the AppleScript reload exists; elsewhere the
 # window you are in keeps the font it started with.
-export def "font use" [name: string@font-names]: nothing -> nothing {
+export def "font use" [
+  name: string@font-names
+  --size (-s): number   # the point size as well, written next to the family
+]: nothing -> nothing {
   let row = (font list | where font == $name | get 0)
   if not $row.installed { font install $name }
   let after = (font list | where font == $name | get 0)
   if not $after.installed { error make { msg: $"($name) is still not installed; nothing was written" } }
-  ghostty set { font-family: $after.family }
-  print (if (ghostty reload) { $"font is ($after.family) — every open window and new ones" } else { $"font is ($after.family) — new windows will use it; this one keeps the font it started with" })
+  if $size != null { check-size $size }
+  ghostty set ({ font-family: $after.family } | merge (if $size == null { {} } else { { font-size: $size } }))
+  let what = ($after.family + (if $size == null { "" } else { $" at ($size)" }))
+  print (if (ghostty reload) { $"font is ($what) — every open window and new ones" } else { $"font is ($what) — new windows will use it; this one keeps the font it started with" })
+}
+
+# The size alone: Ghostty's `font-size`, in points, kept in our file next to the
+# family so `ghostty reset` takes it out with everything else. `--reset` removes
+# the key and Ghostty falls back to its own default (13 in 1.3.1) or to the
+# user's config. A size on the command line is the one thing ⌘+/⌘- lose on
+# the next window, which is why it is a setting and not a keystroke.
+export def "font size" [
+  size?: number   # points; halves are fine (14.5)
+  --reset         # remove the key
+]: nothing -> nothing {
+  if $reset {
+    ghostty set { font-size: null }
+    print (if (ghostty reload) { "font size is Ghostty's own again — every open window and new ones" } else { "font size is Ghostty's own again — in new windows" })
+    return
+  }
+  if $size == null {
+    print (ghostty live font-size | default "Ghostty's own default")
+    return
+  }
+  check-size $size
+  ghostty set { font-size: $size }
+  print (if (ghostty reload) { $"font size is ($size) — every open window and new ones" } else { $"font size is ($size) — new windows will use it" })
+}
+
+# Ghostty rejects nothing here (`+validate-config` takes any number), so the
+# guard is ours: below 4 the window is unreadable, above 72 it is a poster.
+def check-size [size: number]: nothing -> nothing {
+  if $size < 4 or $size > 72 { error make { msg: $"font size ($size) is outside 4..72" } }
 }
 
 # The picker. Installed fonts are marked, because an uninstalled one costs a

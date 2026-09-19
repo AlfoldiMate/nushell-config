@@ -75,6 +75,12 @@ def main [
     | merge (screen-theme --ask=$ask)
     | merge (screen-font --ask=$ask --dry-run=$dry_run)
   )
+  # Screen 3 may have turned the terminal module off; that lands in the
+  # MODULES line of screen 2's answer, whichever it was.
+  let plan = (if ($plan.disable_terminal? | default false) {
+    let enabled = (($plan.modules? | default null | get -o enabled | default $MODULES) | where $it != "terminal")
+    $plan | upsert modules { enabled: $enabled, lazy: ($MODULES_LAZY | where {|m| $m in $enabled }) }
+  } else { $plan })
   screen-tools
   if $ask and (not (confirm $plan)) {
     print "nothing was changed"
@@ -169,13 +175,37 @@ def screen-terminal [--ask, --dry-run]: nothing -> record {
   if not $t.installed {
     let plan = (terminal install-plan)
     print $"  install:  ($plan.command | default $plan.note)"
-    if $ask and (not $dry_run) and $plan.runnable and (yes-no "install Ghostty now?" --default-no) {
+    # Default yes: the theme, the icon, the font and `ghostty shell` are all
+    # Ghostty's, so a distro without it is half a distro. Still a question —
+    # `--defaults` and a `curl … | sh` run print the line and install nothing,
+    # because an application is not something to download unasked.
+    if $ask and (not $dry_run) and $plan.runnable and (yes-no "install Ghostty now?") {
       terminal install --yes
     }
   }
   # Re-read: the install above may just have changed the answer.
   let installed = (terminal list | get 0.installed)
-  { ghostty: $installed, in_ghostty: ($here != null), shell: (screen-shell --ask=$ask --installed=$installed) }
+  let disable = (if $installed { false } else {
+    print $"  (ansi yellow)without Ghostty(ansi reset)"
+    for l in (without-ghostty-lines) { print $"    ($l)" }
+    # The module is lazy, so leaving it on costs nothing at startup; turning
+    # it off only takes `theme`, `font` and `ghostty` out of the way.
+    $ask and (yes-no "disable the terminal module? (it loads only when you type theme, font or ghostty; nothing is saved at startup)" --default-no)
+  })
+  { ghostty: $installed, in_ghostty: ($here != null), shell: (screen-shell --ask=$ask --installed=$installed), disable_terminal: $disable }
+}
+
+# What a shell without Ghostty does not get, stated once so the choice is made
+# with it in view. Everything else — Tab, the prompt, the modules — is the same.
+def without-ghostty-lines []: nothing -> list<string> {
+  [
+    "theme    stays at the ANSI tier: the shell uses your terminal's own sixteen colours by name; `theme use` can still"
+    "         render a palette for tables, ls, bat and the prompt, but only Ghostty gets it written into its config,"
+    "         painted into every open window and drawn as the app icon — and Ghostty's own 463 themes need Ghostty"
+    "font     nothing: the fifteen Nerd Fonts are installed, previewed and kept through Ghostty's config"
+    "shell    nothing: `ghostty shell` is what makes a new window start Nushell; here your terminal decides"
+    "alt      on macOS, Alt+E / Alt+Enter / Alt+arrows depend on your terminal sending Option as Alt"
+  ]
 }
 
 # What a new Ghostty window starts. Left alone, Ghostty runs SHELL, then the

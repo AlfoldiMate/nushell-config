@@ -75,9 +75,13 @@ returns the line: `agent exec ... | save cmd.nu`.
 | Tab | after `agent skill` or `agent command` | Completes skill and command names with their descriptions |
 | Enter `e` `i` `r` `c` `q` Esc | exec menu | See above |
 
-Terminal.app needs "Use Option as Meta key" for Alt+E; iTerm2, Ghostty,
-WezTerm, Kitty and Alacritty send it by default. To rebind, change the
-`agent_line` entry in `modules/agent/stub.nu`.
+On macOS the Option key composes the layout's characters unless the terminal
+is told otherwise: Terminal.app needs "Use Option as Meta key", Ghostty
+`macos-option-as-alt` (unset by default in 1.3.1 — `ghostty shell`, which the
+installer runs, writes `right` when your config says nothing, so the left key
+keeps your accents and symbols); iTerm2, WezTerm, Kitty and Alacritty send
+Alt by default. To rebind, change the `agent_line` entry in
+`modules/agent/stub.nu`.
 
 ## What the model knows about your shell
 

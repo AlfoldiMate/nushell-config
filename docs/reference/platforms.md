@@ -13,13 +13,16 @@ actually exercised, per platform:
 | parses, installs, loads | CI, and by hand | CI | CI |
 | `bootstrap/install.sh` | by hand: clone, re-run as fast-forward, and the release-tarball path with `nu` off PATH | `sh -n` only | n/a |
 | `bootstrap/install.ps1` | n/a | n/a | parse only |
-| theme picker, Ghostty config | by hand | not run — no Ghostty on the runner | Ghostty has no Windows build |
+| theme picker, Ghostty config | by hand | not run — no Ghostty on the runner | no official Ghostty build; the Win32 ports are not installed by the distro, and a user-installed one is found on PATH with its config under `%LOCALAPPDATA%\ghostty` — never run |
 | font install | by hand, archive path; the Homebrew cask path is not run | not run; `fc-cache` branch unexercised | not run; the `HKCU\…\Fonts` registry step is written from the docs only |
 | `port` | `lsof`, by hand | `lsof`, not run | the `netstat -ano` branch, not run |
 
 The pattern in everything above: what a platform *cannot* do is stated rather
-than papered over. `terminal install` on Windows prints the download page and
-runs nothing, because there is no Ghostty build to install; `port` errors with
+than papered over. `terminal install` on Windows prints where the port stands
+and runs nothing: there is no official build (ghostty-org/ghostty discussion
+#2563 tracks the port), and the Win32 ports on GitHub are personal forks the
+Ghostty team has asked not to carry its name — not something an installer
+should download for you (checked 2026-09-19). `port` errors with
 the command to use instead when `lsof` is absent, rather than returning an
 empty table that would read as "nothing is listening".
 

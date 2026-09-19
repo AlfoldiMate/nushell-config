@@ -70,10 +70,12 @@ def xdg-dir []: nothing -> path {
 # Application Support as well as XDG; elsewhere only XDG. Within a directory
 # `config.ghostty` beats the legacy `config`, and only one of the two is loaded.
 def candidates []: nothing -> list<path> {
-  let dirs = if $nu.os-info.name == "macos" {
-    [($nu.home-dir | path join Library "Application Support" com.mitchellh.ghostty) (xdg-dir)]
-  } else {
-    [(xdg-dir)]
+  let dirs = match $nu.os-info.name {
+    "macos" => [($nu.home-dir | path join Library "Application Support" com.mitchellh.ghostty) (xdg-dir)]
+    # No official build; the Win32 ports that exist read %LOCALAPPDATA%\ghostty
+    # (shiweis/ghostty-windows README, 2026-09-02) before XDG. Unverified here.
+    "windows" => [($env.LOCALAPPDATA? | default ($nu.home-dir | path join AppData Local) | path join ghostty) (xdg-dir)]
+    _ => [(xdg-dir)]
   }
   $dirs | each {|d| [($d | path join config.ghostty) ($d | path join config)] } | flatten
 }
@@ -205,13 +207,22 @@ export def "ghostty nu-path" []: nothing -> path {
 }
 
 # Make Nushell what a new Ghostty window starts, or hand that back to Ghostty.
+#
+# On macOS the same write makes the right Option key Alt, unless their config
+# already says something about it. Ghostty's default (`macos-option-as-alt`
+# unset) lets Option compose the layout's characters, so Alt+E (the agent),
+# Alt+Enter (a newline) and Alt+arrows (words) type an accent or a symbol
+# instead — Ghostty 1.3.1 default, verified 2026-09-19. `right` keeps the left
+# key for the layout (on a Hungarian ISO layout `@ [ ] { }` are Option+letter;
+# on US it is the accents) and gives the shell the other one.
 export def "ghostty shell" [
-  --reset  # drop our `command`, so Ghostty falls back to SHELL / passwd again
+  --reset  # drop our `command` (and the Option key), so Ghostty falls back to SHELL / passwd again
 ]: nothing -> nothing {
   if $reset {
-    ghostty set { command: null }
+    ghostty set { command: null, macos-option-as-alt: null }
   } else {
-    ghostty set { command: (ghostty nu-path) }
+    let alt = (if $nu.os-info.name == "macos" and (ghostty live "macos-option-as-alt" | default "" | is-empty) { { macos-option-as-alt: "right" } } else { {} })
+    ghostty set ({ command: (ghostty nu-path) } | merge $alt)
   }
   let now = (ghostty live "command")
   print (if $now == null {

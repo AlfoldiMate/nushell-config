@@ -116,6 +116,21 @@ def "test use writes the family Ghostty reports and reloads" [] {
   assert equal (font list | where current | get font) [Hack]
 }
 
+def "test use --size writes the size next to the family, and font size alone changes it" [] {
+  let fake = fake-ghostty
+  faces $fake "Hack Nerd Font"
+  font use Hack --size 15
+  # Settings read back as the text in the file.
+  assert equal (ghostty settings | select font-family font-size) { font-family: "Hack Nerd Font", font-size: "15" }
+  font size 14.5
+  assert equal (ghostty settings | get font-size) "14.5"
+  assert equal (ghostty settings | get font-family) "Hack Nerd Font" "the family is untouched"
+  font size --reset
+  assert equal (ghostty settings | get -o font-size) null
+  let err = try { font size 100; null } catch {|e| $e.msg }
+  assert ($err | str contains "outside 4..72") $err
+}
+
 def "test use of a font that is not installed asks first, and cannot here" [] {
   let fake = fake-ghostty
   # `font use` installs after asking; headless there is no one to ask.

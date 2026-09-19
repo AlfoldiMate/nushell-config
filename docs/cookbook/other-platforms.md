@@ -53,10 +53,14 @@ derived for it, but none of it has been run there; in particular whether a
 bare `command = <nu>` starts a *login* shell on Linux has not been checked,
 only that it starts one. There is no `ghostty reload` off macOS (it is
 AppleScript), so a written theme, icon or font reaches new windows only,
-while the running window is repainted over OSC. On Windows Ghostty has no
-build: `terminal install` prints the download page and runs nothing,
-`terminal list` says so, and the shell's colours stay at the ANSI tier —
-whatever your terminal paints — until a theme can be written.
+while the running window is repainted over OSC. On Windows there is no
+official Ghostty build (the port is in progress upstream, discussion #2563)
+and the distro installs none of the unofficial Win32 ports: `terminal
+install` says so and runs nothing, and the shell's colours stay at the ANSI
+tier — whatever Windows Terminal paints — until a theme can be written. If
+you install a port yourself and it puts `ghostty.exe` on PATH, the module
+finds it and writes its config under `%LOCALAPPDATA%\ghostty`; none of that
+has been run here (2026-09-19).
 
 **Fonts.** `font install` on Linux downloads the Nerd Fonts `.tar.xz`, takes
 four faces into `~/.local/share/fonts` and runs `fc-cache -f` when fontconfig

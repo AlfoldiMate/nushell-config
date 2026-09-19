@@ -35,7 +35,7 @@ and nothing is written before you say yes to the last one:
 |---|---|
 | 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
 | 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
-| 3. Terminal | is Ghostty installed, are you *running* in it, the install line if not — and whether a new window starts Nushell (the one question whose default is yes) |
+| 3. Terminal | is Ghostty installed, are you *running* in it; if not, the install line and "install Ghostty now?" (default yes — on macOS it is the Homebrew cask; Linux and Windows get the link). Without it the screen says what you do without — the theme stays at the ANSI tier, no `font`, no `ghostty shell`, Alt keys depend on your terminal — and offers to disable the `terminal` module (default no: it is lazy and costs nothing left on). Then whether a new window starts Nushell (default yes) |
 | 4. Theme | one of a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal, then written to Ghostty with its icon and rendered for tables, `ls`, bat and the prompt |
 | 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
 | 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |
