@@ -1,8 +1,9 @@
 # This machine's Nushell setup
 
 macOS (arm64), Nushell **0.115.1** via Homebrew, login shell `/bin/zsh`,
-terminal Ghostty, prompt Starship, Nushell theme `"terminal"` — sixteen ANSI
-names, so Ghostty's theme is the shell's theme.
+terminal Ghostty, prompt Starship. One theme, the terminal's: `theme use`
+writes Ghostty's config and renders Nushell's colours, LS_COLORS, the bat
+theme and starship's config from the same palette (`themes/README.md`).
 
 ## Two directories, and which one to edit
 
@@ -72,7 +73,9 @@ check, tools, plugins, modules and startup time.
 - **Tables** `markdown`, index always, footer at 25 rows
 - **Banner** off · **History** sqlite, 1M entries
 - **Tab** the smart menu (`SMART_TAB`), pipeline-aware, `NU_COMPLETE_EVAL = "safe"`
-- **Theme** `"terminal"`; `VIVID_THEME` and `BAT_THEME` follow it
+- **Theme** whatever `theme use` rendered last into `.state/theme/` (no knob);
+  tables, `ls`, bat and the starship prompt all come from it. `theme status`,
+  `theme roles`
 - **Modules** `nu-config` and `nu-complete` eager; `terminal`, `agent`, `odata`
   lazy — loaded by a `pre_execution` hook on the first line that mentions them,
   which means they do **not** load for `nu -c` or a script
@@ -83,10 +86,11 @@ check, tools, plugins, modules and startup time.
 
 Generated into the user's `vendor/autoload/` by `nu-config tools setup`, from
 the registry in `modules/nu-config/tools.nu`: **zoxide**, **atuin**,
-**carapace**, **vivid** (baked into a literal — calling it at every start costs
-milliseconds for nothing). Installed → generated, absent → pruned, so presence
-on PATH is the switch. Starship is wired by hand in `conf/prompt.nu`; Homebrew's
-`command_not_found` and direnv are in `conf/tools.nu`, each guarded with `which`.
+**carapace**. Installed → generated, absent → pruned, so presence on PATH is
+the switch. vivid and starship are the theme's: `theme use` renders LS_COLORS
+and a starship.toml into `.state/theme/`, and starship is wired by hand in
+`conf/prompt.nu`. Homebrew's `command_not_found` and direnv are in
+`conf/tools.nu`, each guarded with `which`.
 
 `nu -l -c` does **not** load the vendor autoload directory, so carapace and
 zoxide are absent there — source the generated file if a test needs one.

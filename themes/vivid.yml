@@ -1,0 +1,139 @@
+# vivid.yml — `ls` colours (LS_COLORS), written in roles. `theme use` renders it.
+#
+# The `colors:` block below is replaced with the theme's resolved roles — as
+# `ansi:` names in tier one and hex in the others — and vivid is run on the
+# result (`vivid generate <file>`; vivid 0.11 takes a path as well as a name).
+# A palette file that names a `vivid:` theme skips this file: Catppuccin's own
+# vivid theme knows its 26 colours better than a blend does.
+#
+# The rules are vivid's `ansi` theme (github.com/sharkdp/vivid, MIT/Apache-2.0),
+# kept as they are because its reasoning holds here too: base colours over
+# bright ones, no black or white, no backgrounds, bold over underline, similar
+# files alike, regular files unpainted. Any role may be used in a rule —
+# `foreground: orange`, `foreground: fg_muted` — and a copy in <your dir>/
+# themes/vivid.yml is rendered instead of this one.
+
+colors:
+  # rendered from themes/palettes/*.nuon — the sixteen by name, the rest as the tier allows
+  red: "ansi:red"
+  green: "ansi:green"
+  yellow: "ansi:yellow"
+  blue: "ansi:blue"
+  magenta: "ansi:magenta"
+  cyan: "ansi:cyan"
+
+core:
+  normal_text: {}
+  regular_file: {}
+  reset_to_normal: {}
+
+  # Directories
+  directory:
+    foreground: blue
+
+  sticky:
+    foreground: blue
+    font-style: bold
+
+  other_writable:
+    foreground: blue
+    font-style: underline
+
+  sticky_other_writable:
+    foreground: blue
+    font-style: [bold, underline]
+
+  # Executables
+  executable_file:
+    foreground: yellow
+    font-style: bold
+
+  setuid:
+    foreground: yellow
+    font-style: [bold, underline]
+
+  setgid:
+    foreground: yellow
+    font-style: [bold, underline]
+
+  # Symlinks
+  symlink:
+    foreground: cyan
+    font-style: italic
+
+  broken_symlink:
+    foreground: red
+    font-style: italic
+
+  missing_symlink_target:
+    foreground: red
+    font-style: bold
+
+  multi_hard_link: {}
+
+  # IPC files
+  fifo:
+    foreground: magenta
+
+  socket:
+    foreground: magenta
+    font-style: bold
+
+  door:
+    foreground: magenta
+    font-style: bold
+
+  # Devices
+  block_device:
+    foreground: green
+    font-style: [bold, underline]
+
+  character_device:
+    foreground: green
+    font-style: bold
+
+  file_with_capability: {}
+
+text:
+  special:
+    font-style: bold
+
+  todo:
+    font-style: bold
+
+  licenses: {}
+
+  configuration:
+    font-style: regular
+
+  other: {}
+
+markup:
+  font-style: regular
+
+programming:
+  source:
+    font-style: regular
+
+  tooling:
+    font-style: regular
+
+media:
+  font-style: regular
+
+office:
+  font-style: regular
+
+archives:
+  font-style: regular
+
+executable:
+  # Do not style libraries as executables
+  font-style: regular
+
+  windows:
+    foreground: yellow
+    font-style: bold
+
+unimportant:
+  font-style: faint

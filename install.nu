@@ -197,37 +197,28 @@ def screen-shell [--ask, --installed]: nothing -> any {
 
 # ── 4. Theme ──────────────────────────────────────────────────────────────────
 #
-# Two different things are called "theme" and the screen has to keep them apart.
-# THEME is a Nushell colour file in themes/. Its shipped value, "terminal", is
-# sixteen ANSI colour NAMES and no hex, which hands the actual colours to the
-# terminal — and then the second choice, which Ghostty theme, is what decides
-# what they look like. Choosing Catppuccin instead pins hex in Nushell and
-# ignores the terminal entirely.
+# One theme, and it is the terminal's: a Ghostty theme is rendered for the
+# shell as well — tables, `ls`, bat and the prompt — by `theme use`, which is
+# what `apply` runs for the choice made here. Nothing chosen means the ANSI
+# tier: the shell follows whatever sixteen colours the terminal paints.
 
 def screen-theme [--ask]: nothing -> record {
   print $"(ansi cyan_bold)4. Theme(ansi reset)"
-  print $"  ($THEME)  (ansi dark_gray)— the shipped default: Nushell follows your terminal's sixteen colours(ansi reset)"
-  if not $ask { print ""; return { theme: null, ghostty_theme: null } }
+  print $"  (ansi dark_gray)one of Ghostty's 463, rendered for Nushell, ls, bat and the prompt too; `theme` changes it later(ansi reset)"
+  if not $ask { print ""; return { ghostty_theme: null } }
 
-  let themes = (ls ($ROOT | path join themes) | get name | each {|f| $f | path basename | str replace ".nu" "" } | sort)
-  let nu_theme = if (yes-no $"keep THEME = \"($THEME)\"?") { $THEME } else {
-    ($themes | input list "Nushell theme") | default $THEME
-  }
-
-  # Only "terminal" delegates to Ghostty; every other theme carries its own hex.
   mut ghostty_theme = null
-  if $nu_theme == "terminal" and (terminal list | get 0.installed) {
+  if (terminal list | get 0.installed) {
     # Default no, like every question here but the shell: pressing Enter
-    # through the whole installer has to end with no override in settings.nu.
-    if (yes-no "pick a Ghostty theme? \(its colours become Nushell's\)" --default-no) {
+    # through the whole installer has to end with nothing written.
+    if (yes-no "pick a theme?" --default-no) {
       $ghostty_theme = (pick-ghostty-theme)
     }
+  } else {
+    print $"  (ansi dark_gray)no Ghostty: the shell uses the terminal's sixteen colours by name(ansi reset)"
   }
   print ""
-  {
-    theme: (if $nu_theme == $THEME { null } else { $nu_theme })
-    ghostty_theme: $ghostty_theme
-  }
+  { ghostty_theme: $ghostty_theme }
 }
 
 # The theme picker, but choosing only: nothing is written here, because the
@@ -317,10 +308,14 @@ def screen-tools []: nothing -> nothing {
   if ($missing | is-not-empty) {
     print $"  (ansi dark_gray)not installed: ($missing | str join ', ') — install them and re-run `nu-config tools setup`(ansi reset)"
   }
-  # Starship is wired by conf/prompt.nu rather than by a generated file, so it
-  # is not in the tool registry and has to be mentioned here.
+  # Starship and vivid are the theme's (conf/prompt.nu, `theme use`) rather
+  # than generated init files, so they are not in the registry and are
+  # mentioned here.
   if (which starship | is-empty) {
     print $"  (ansi dark_gray)-- starship   prompt; without it Nushell's own prompt is used(ansi reset)"
+  }
+  if (which vivid | is-empty) {
+    print $"  (ansi dark_gray)-- vivid      `ls` colours from the theme; without it Nushell's own apply(ansi reset)"
   }
   print ""
 }
@@ -347,9 +342,9 @@ def plan-lines [plan: record]: nothing -> list<string> {
   ++ ($settings | each {|l| $"  ($l)" })
   ++ [
     (if ($plan.shell? | default null) != null { $"Ghostty command = ($plan.shell) — a new window starts Nushell" })
-    (if ($plan.ghostty_theme? | default null) != null { $"Ghostty theme = ($plan.ghostty_theme)" })
+    (if ($plan.ghostty_theme? | default null) != null { $"theme ($plan.ghostty_theme) — Ghostty, and rendered for the shell" })
     (if ($plan.font? | default null) != null { $"Ghostty font-family = ($plan.font)" })
-    "generate tool init files, register plugins"
+    "render the theme, generate tool init files, register plugins"
   ]) | compact
 }
 
@@ -363,12 +358,6 @@ def settings-block [plan: record]: nothing -> list<string> {
     })
     (if ($plan.modules? | default null) != null {
       $"const MODULES_LAZY = [($plan.modules.lazy | str join ' ')]"
-    })
-    (if ($plan.theme? | default null) != null { $"const THEME = \"($plan.theme)\"" })
-    # A hex theme wants ls and bat to match it; "terminal" does not, and its
-    # shipped VIVID_THEME = "ansi" is already right.
-    (if ($plan.theme? | default null) != null and (($plan.theme? | default "") != "terminal") {
-      $"$env.VIVID_THEME = \"($plan.theme)\""
     })
   ] | compact)
 }
@@ -397,7 +386,17 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> no
   # Everything below depends on $nu.data-dir and $nu.plugin-path, which this
   # process computed BEFORE the user dir existed. A fresh `nu` sees it, so the
   # remaining steps run in a child that loads the new config for real.
+  #
+  # The theme render is first: it is what makes the Ghostty theme written above
+  # reach tables, ls, bat and the prompt. No theme chosen re-renders whatever
+  # was chosen before, or the ANSI tier on a first install — never a reset.
+  let theme_name = (if ($plan.ghostty_theme? | default null) != null { $plan.ghostty_theme | to nuon } else { "" })
   let steps = ([
+    (if $dry_run {
+      'print $"(ansi cyan_bold)Theme(ansi reset)"; use terminal *; theme resolve ' + (if $theme_name == "" { "(theme current | default {} | get -o name)" } else { $theme_name }) + ' | select name tier bat | print; print ""'
+    } else {
+      'print $"(ansi cyan_bold)Theme(ansi reset)"; use terminal *; theme sync ' + $theme_name + '; print ""'
+    })
     (if $skip_tools { null } else if $dry_run {
       'print $"(ansi cyan_bold)Tool init files(ansi reset)  → (nu-config tools dir)"; nu-config tools status | select tool installed state | print; print ""'
     } else {

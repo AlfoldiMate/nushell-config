@@ -42,13 +42,14 @@ lines.
 `distro.nu` sources `defaults.nu`, then your `settings.nu`, then `conf/`:
 
 ```nu
-source ($DISTRO_ROOT | path join defaults.nu)   # const THEME = "terminal"
-source $USER_SETTINGS                           # const THEME = "catppuccin-mocha"
+source ($DISTRO_ROOT | path join defaults.nu)   # const SMART_TAB = true
+source $USER_SETTINGS                           # const SMART_TAB = false
 ```
 
 A `const` in a later `source` **shadows** an earlier one, and a later `$env.`
-assignment overwrites an earlier one. So `$THEME` is `catppuccin-mocha`, and
-`conf/theme.nu` — which runs afterwards and reads `$THEME` — sees your value.
+assignment overwrites an earlier one. So `$SMART_TAB` is `false`, and
+`conf/completions.nu` — which runs afterwards and reads `$SMART_TAB` — sees
+your value.
 
 Two consequences worth stating plainly:
 
@@ -85,7 +86,7 @@ The split is also a rule about what goes where:
 That is why `conf/shell.nu` and `conf/settings.nu` no longer exist: both were
 lists of plain assignments, so both became `defaults.nu`. What is left in
 `conf/` genuinely computes something — `conf/env.nu` builds `PATH` per OS and
-picks the first editor that exists, `conf/theme.nu` applies `$THEME`.
+picks the first editor that exists, `conf/theme.nu` loads the rendered theme.
 
 The rule that makes layering work: **a `conf/` file must never assign a value
 `defaults.nu` owns.** It would run after your `settings.nu` and silently
@@ -120,6 +121,10 @@ for a 160 B registry (81 µs against 51 µs) and is most of a keystroke's budget
 for a 195 kB spec. Both files carry a comment saying so. The rule those two bend
 is worth keeping anyway: the files a *person* opens — `.state/odata/services.nuon`,
 `.state/agent/sessions/*.nuon` — are NUON, and none of them is large.
+
+Files rendered for another tool are in that tool's format, and are read only by
+it: `.state/theme/starship.toml` and `.state/theme/ls_colors` (`theme use`),
+`vendor/autoload/*.nu` (`nu-config tools setup`).
 
 Written NUON is `to nuon --indent 2`: one key per line, so a diff shows the line
 that changed rather than the whole file, and empty or null fields are dropped
@@ -159,7 +164,7 @@ editing it is the whole override mechanism.
 | 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
 | 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
 | 3. Terminal | is Ghostty installed, are you *running* in it, the install line if not — and whether a new window starts Nushell (the one question whose default is yes) |
-| 4. Theme | the Nushell theme, and — when it is `"terminal"` — one of Ghostty's 463, previewed by painting the live terminal |
+| 4. Theme | one of Ghostty's 463, previewed by painting the live terminal, then rendered for tables, `ls`, bat and the prompt |
 | 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
 | 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |
 | 7. The plan | every line that will be written, then one yes |

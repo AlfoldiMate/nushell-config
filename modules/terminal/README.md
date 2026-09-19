@@ -7,16 +7,18 @@ terminal list                  # which terminals this distro knows, and what is 
 theme                          # pick from Ghostty's 463, the terminal is the preview
 font                           # pick a Nerd Font, install it, see it in a real window
 theme use "TokyoNight Storm"   # or name one; Tab completes them
+theme roles                    # what the shell made of it: every role, its colour, which tier
 ghostty shell                  # a new Ghostty window starts Nushell
 ghostty status                 # what this distro has written into Ghostty's config
 ```
 
-The two belong in one module because of how this distro does colour. `THEME =
-"terminal"` makes Nushell's theme the terminal's own sixteen ANSI colours, so
-"change the Nushell theme" means "change Ghostty's theme": write Ghostty's
-configuration, and repaint the window you are sitting in. `theme.nu` chooses and
-paints, `ghostty.nu` writes, `detect.nu` answers the two questions `install.nu`
-asks before either of them runs.
+The two belong in one module because of how this distro does colour: there is
+one theme and it is the terminal's. `theme use` writes Ghostty's configuration,
+repaints the window you are sitting in, and renders the shell's own colours —
+tables, `ls`, bat, the prompt — from the same palette, so they follow in this
+window now and in every shell after. `theme.nu` reads and paints, `palette.nu`
+resolves and renders, `ghostty.nu` writes, `detect.nu` answers the two
+questions `install.nu` asks before any of them runs.
 
 ## Commands
 
@@ -27,7 +29,12 @@ asks before either of them runs.
 | `theme palette <name>` | one theme file as data: `palette` 0-15 and the named colours |
 | `theme preview <name>` | paint this session, change nothing on disk |
 | `theme reset` | hand the palette back to Ghostty's config — the way out of a preview |
-| `theme use <name>` | paint, and keep: `ghostty set` persists it for new windows |
+| `theme use <name>` | paint, keep (`ghostty set`), and render the shell's colours from it |
+| `theme roles [name]` | every role, its resolved colour and the tier that decided it, with a swatch |
+| `theme status` | what is rendered, from which theme, at which tier, and whether Ghostty agrees |
+| `theme sync [name]` | re-resolve and re-render — after a `git pull` changed a template, or `--none` to forget the theme |
+| `theme resolve [name]` | the resolved theme as data, nothing written |
+| `theme names` | the names alone; what every `<name>` completes from |
 | `ghostty status` | the config Ghostty reads, what we own in it, and the theme and shell Ghostty resolves |
 | `ghostty shell [--reset]` | make Nushell what a new window starts; `--reset` hands that back to `SHELL` / passwd |
 | `ghostty nu-path` | the nu that `shell` writes: the one on PATH, not the running binary |
@@ -49,10 +56,12 @@ Theme names are Tab-completable everywhere they are taken.
 
 ## Configuration
 
-None. Nothing here has a knob: both files read Ghostty's own configuration at the
-moment you ask, so there is no state to set up and nothing for your `settings.nu`
-to have to win against. The one setting nearby is `THEME` in `defaults.nu`, which
-belongs to `conf/theme.nu`, not to this module.
+No knobs. The one piece of state is what `theme use` renders into `<your
+dir>/.state/theme/` — `theme.nuon`, `starship.toml`, `ls_colors` — which
+`conf/theme.nu` and `conf/prompt.nu` read at startup; `theme status` shows it.
+Ghostty's own configuration is read at the moment you ask, never cached. The
+templates being rendered live in `themes/` (`themes/README.md`), and a copy in
+your own `themes/` is the one used.
 
 ## Dependencies
 
@@ -63,6 +72,32 @@ the escape sequences are understood by any terminal that implements them; only
 everything that has to *know* what a theme is needs Ghostty.
 
 ## Design
+
+### One palette, three tiers, every tool rendered from it
+
+The long form is the header of `palette.nu`; this is the short one. A theme is
+a record of **roles** — `fg_muted`, `border`, `accent`, `orange`, the sixteen —
+and `themes/nushell.nu`, `themes/starship.toml` and `themes/vivid.yml` are
+written against those roles rather than against colours. Resolving a theme is
+three tiers, each filling in only what the one before could not say: the
+terminal's sixteen by ANSI name (tier one, `themes/palettes/ansi.nuon`); shades
+blended from the Ghostty theme file's hexes — foreground pulled halfway to
+background is `fg_muted`, red mixed with yellow is `orange` (tier two, every
+theme Ghostty has); and a palette file naming the shaded roles exactly, with a
+bat and a vivid theme that match (tier three, shipped for Catppuccin).
+
+The rule that shapes it: **the sixteen are never a hex, in any tier.** A hex is
+right only while the terminal paints the palette it came from; a name is right
+over SSH, in tmux, and after a hand edit of Ghostty's config. So the shell pins
+exactly what ANSI has no word for, and `theme roles` shows which is which.
+
+It is rendered, not resolved at startup, because a resolve spawns Ghostty to
+find the theme file and the render runs vivid — 40 ms — while reading the
+result is one `open` of a 1 kB NUON, 0.36 ms. `theme use` is `def --env` so the
+session it runs in gets the same three things a startup gets, from the same
+files. There is no `THEME` knob any more: the knob and this picker were two
+ways to say "theme" that did not know about each other, and the installer put
+users on the wrong side of the split.
 
 ### The terminal is the preview
 
@@ -234,7 +269,7 @@ every shell does, so the window gets a login nu (`$nu.is-login == true`) with
 
 ### Why it is lazy
 
-Loading these files costs 18 ms, for commands a shell uses once in a while,
+Loading these files costs 13 ms, for commands a shell uses once in a while,
 so `theme`, `ghostty` and `font` are trigger words
 (`MODULES_TRIGGERS` in `defaults.nu`). Typing `ghostty +list-themes` loads the
 module too, which is harmless.
@@ -245,10 +280,14 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 
 | What | Cost |
 |---|---|
-| the module, loaded | 18 ms — 97.4 ms of startup with it eager against 79.0 ms with it lazy, medians of 25 cold starts |
-| parsing the module | 4.6 ms — `nu -n -c 'use terminal *'` at 26.1 ms against a 21.5 ms empty run, medians of 15. `detect.nu` is 0.9 ms of it |
+| the module, loaded | 13 ms — 72.1 ms of startup with it eager against 58.8 ms with it lazy, medians of 25 cold starts, 2026-09-19 with palette.nu |
+| parsing the module | 11.1 ms — `nu -n -c 'use terminal *'` against an empty run, medians of 15; 8.2 ms before palette.nu on the same day, so the renderer is 3 ms of parse. `detect.nu` is 0.9 ms of it |
 | `theme list` | 31 ms — it spawns `ghostty +list-themes` |
 | `theme list --swatches` | 333 ms, reading all 463 theme files |
+| `theme resolve <name>` | 40 ms, of which 31 ms is `theme palette` spawning `ghostty +list-themes` to find the file |
+| `theme sync` | 44 ms: the resolve, vivid, three files written |
+| `theme use` | 188 ms: `ghostty set` validates through `+validate-config`, the name is checked, previewed and resolved — four Ghostty spawns — then the render |
+| reading the render at startup | 0.36 ms for `theme.nuon` (1 kB), 0.09 ms for `ls_colors` (6 kB), medians of 21 |
 | reading all 463 files | 39 ms; `(?m)` over the whole file rather than `lines` halves the parse, 49 ms against 109 ms |
 | one swatch | bit shifts rather than splitting the hex into pairs: 95 ms over all 463 against 380 ms |
 | `ghostty +show-config` | 18 ms |
@@ -258,10 +297,11 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 ## Files
 
 ```
-mod.nu       re-exports both halves, and `terminal activate` (which does nothing)
+mod.nu       re-exports every file, and `terminal activate` (which does nothing)
 load.nu      `use terminal *` + activate
 meta.nuon    description, the ghostty dependency, no knobs
-theme.nu     listing, parsing, painting, and the picker
+theme.nu     listing, reading and painting Ghostty's themes
+palette.nu   roles, the three tiers, rendering, the picker, `theme use`
 font.nu      the Nerd Font registry, installing, and the preview window
 ghostty.nu   finding Ghostty and its config, the one line we add to it, and the shell
 detect.nu    the terminal registry: installed, running, how to get one
@@ -271,6 +311,16 @@ detect.nu    the terminal registry: installed, running, how to get one
 
 - Lazy, therefore interactive-only: `theme use X` in a script needs `use
   terminal *` first, because `pre_execution` does not fire for `nu -c`.
+- A hand-written `~/.config/starship.toml` is not read any more: the distro
+  owns starship's configuration and points `STARSHIP_CONFIG` at the rendered
+  one. The way to change the prompt is a copy of `themes/starship.toml` in your
+  own `themes/`.
+- The user's copy of a template is picked at parse time for `theme use` in the
+  running session (`source` needs a constant), so a `themes/nushell.nu` dropped
+  in after the module loaded is seen by the next shell.
+- Tier two blends in sRGB, not linear light. For the small steps between a
+  background and its foreground the difference is invisible; it is noted here
+  in case someone measures.
 - Ghostty only. The OSC painting would work in any terminal that implements
   OSC 4/10/11/12/17/19, but the themes, the theme files and the config writing
   are Ghostty's. The registry in `detect.nu` is where a second terminal would

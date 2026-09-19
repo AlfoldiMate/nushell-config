@@ -1,20 +1,21 @@
-# theme — choose one of Ghostty's themes, and see it before you keep it
+# theme — Ghostty's themes: listing them, reading them, painting one onto the
+# running terminal
 #
-#   theme                 pick one: fuzzy list of all 463, then keep it
 #   theme list            every theme Ghostty can find (--swatches: in colour)
+#   theme palette <name>  one theme file as data: the sixteen and the named colours
 #   theme preview <name>  paint this session only
 #   theme reset           back to what Ghostty's config says
-#   theme use <name>      paint, and keep it (ghostty.nu persists it)
 #
-# Why the terminal is the preview and not a pane: with THEME = "terminal" the
-# sixteen ANSI colours ARE the Nushell theme, and a Ghostty theme file is exactly
-# the palette plus background, foreground, cursor and selection. Every one of
-# those can be set at runtime over OSC, so applying a theme file to the running
-# session is a dozen escape sequences and no reload — what you see is the theme,
-# prompt, tables and scrollback included.
+# Choosing one — `theme`, `theme use` — and what the choice means for the shell
+# is palette.nu, which builds on the two things here: a theme file as data, and
+# a theme painted onto the window you are in.
 #
-# Ghostty cannot reload its config from the CLI (`reload_config` is a keybind
-# action only), so `use` does both: OSC for this window, config for the next.
+# Why the terminal is the preview and not a pane: the sixteen ANSI colours are
+# the base of every Nushell theme this distro renders, and a Ghostty theme file
+# is exactly the palette plus background, foreground, cursor and selection.
+# Every one of those can be set at runtime over OSC, so applying a theme file to
+# the running session is a dozen escape sequences and no reload — what you see
+# is the theme, prompt, tables and scrollback included.
 
 use ghostty.nu *
 
@@ -64,7 +65,7 @@ def theme-dirs []: nothing -> record {
 # One theme file: `palette = N=#hex` for 0-15 plus a few named colours, which are
 # the same things OSC can set. Anything else Ghostty allows in a theme is ignored
 # rather than rejected — a theme is data, and a new key is Ghostty's business.
-export def "theme palette" [name: string@theme-names]: nothing -> record {
+export def "theme palette" [name: string@"theme names"]: nothing -> record {
   let f = (theme list | where theme == $name | get -o 0.path)
   if $f == null { error make { msg: $"Ghostty has no theme called '($name)'" } }
   read-theme $f $name
@@ -88,7 +89,8 @@ def theme-hexes [file: path]: nothing -> list<string> {
   open $file | parse -r $PALETTE_RE | sort-by {|r| $r.i | into int } | get hex
 }
 
-def theme-names []: nothing -> list<string> {
+# The names alone — what every `<name>` argument completes from.
+export def "theme names" []: nothing -> list<string> {
   theme list | get theme
 }
 
@@ -127,7 +129,7 @@ def paint [t: record]: nothing -> string {
 # to a terminal and in a pipeline they would be data, so what matters is where
 # stdout goes. It is also why install.nu can preview — a script is never
 # "interactive", but its stdout is the terminal you are looking at.
-export def "theme preview" [name: string@theme-names]: nothing -> nothing {
+export def "theme preview" [name: string@"theme names"]: nothing -> nothing {
   if not (is-terminal --stdout) { error make { msg: "theme preview paints a terminal; stdout is not one" } }
   print -n (paint (theme palette $name))
 }
@@ -137,57 +139,6 @@ export def "theme preview" [name: string@theme-names]: nothing -> nothing {
 export def "theme reset" []: nothing -> nothing {
   if not (is-terminal --stdout) { return }
   print -n ([104 110 111 112 117 119] | each {|c| osc ($c | into string) } | str join)
-}
-
-# ── Choosing one ──────────────────────────────────────────────────────────────
-
-# Keep a theme: Ghostty's config for every window from now on, OSC for this one.
-export def "theme use" [name: string@theme-names]: nothing -> nothing {
-  let t = (theme palette $name)      # a wrong name fails here, before anything is written
-  ghostty set { theme: $name }
-  if (is-terminal --stdout) { print -n (paint $t) }
-  print $"theme is ($name) — this window now, new windows from Ghostty's config"
-}
-
-# The picker. `input list --fuzzy` does the searching over all 463 at once, with
-# each theme's own sixteen colours beside its name.
-#
-# Why it does not repaint as you arrow through the list: `input list` cannot call
-# back on cursor movement, and the alternative — driving `input listen` and
-# drawing a scrolling fuzzy list by hand — is a TUI written in Nushell to save
-# one keystroke. So nothing is painted while you choose, which also means a
-# cancelled list leaves the terminal exactly as it was. The theme is applied once
-# you pick it, and the keep/discard question is one you answer looking at it.
-export def main []: nothing -> nothing {
-  if not ((is-terminal --stdin) and (is-terminal --stdout)) {
-    error make { msg: "`theme` is the interactive picker and needs a terminal on both ends; `theme use <name>` is not" }
-  }
-  let before = (ghostty settings | get -o theme)
-  let rows = (theme list --swatches | select theme colours)
-
-  mut picking = true
-  while $picking {
-    let pick = ($rows | input list --fuzzy --display {|r| $"($r.theme) ($r.colours)" } "theme")
-    if $pick == null {
-      print "unchanged"
-      return
-    }
-    print -n (paint (theme palette $pick.theme))
-    match ([$"keep ($pick.theme)" "pick another" "leave it as it was"] | input list $"($pick.theme) — this is it")  {
-      $a if ($a | default "" | str starts-with "keep") => {
-        ghostty set { theme: $pick.theme }
-        print $"kept ($pick.theme) — new windows will read it from Ghostty's config"
-        $picking = false
-      }
-      "pick another" => { theme reset }
-      _ => {
-        # Esc here means the same as saying no: undo the paint.
-        theme reset
-        print (if $before == null { "unchanged — Ghostty's own theme is back" } else { $"unchanged — back to ($before)" })
-        $picking = false
-      }
-    }
-  }
 }
 
 # Sixteen blocks in the theme's own colours, as truecolor, so a swatch shows what

@@ -1,9 +1,9 @@
 # tools.nu — hooks and keybindings for tools that ship no Nushell init file
 #
-# Tools that DO emit a .nu init file (zoxide, atuin, carapace, vivid) are
-# handled by `nu-config tools setup`, which writes them into the vendor
-# autoload dir where Nushell loads them after this config. See
-# modules/nu-config/tools.nu for the registry.
+# Tools that DO emit a .nu init file (zoxide, atuin, carapace) are handled by
+# `nu-config tools setup`, which writes them into the vendor autoload dir where
+# Nushell loads them after this config. See modules/nu-config/tools.nu for the
+# registry. vivid and starship are the theme's: `theme use` renders both.
 #
 # Everything here is guarded with `which`, so a missing binary is a no-op.
 

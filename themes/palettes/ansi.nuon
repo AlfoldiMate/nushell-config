@@ -1,0 +1,60 @@
+# ansi.nuon — the palette every theme starts from: the terminal''s own sixteen
+# colours, by NAME, and nothing that needs a hex.
+#
+# This is tier one of theme resolution (modules/terminal/palette.nu). Every
+# role below is a Nushell colour name, so whatever the terminal paints `blue`
+# as IS blue here — pick any of Ghostty''s 463 themes and the shell follows,
+# with nothing to keep in sync. The shaded roles (fg_muted, border, the extra
+# hues) have to make do with the sixteen: `dark_gray` is the only grey ANSI
+# has, and `orange` can only be `yellow`. When the theme''s hexes are known
+# those roles are re-derived by blending (tier two), and a palette file next
+# to this one can name them exactly (tier three) — see README.md.
+#
+# It is also what conf/theme.nu loads when `theme use` has never run.
+{
+  bat: "ansi"
+  roles: {
+    # text and surfaces
+    fg: default            # the terminal''s foreground
+    fg_dim: default        # secondary text — ANSI has no word for it
+    fg_muted: dark_gray    # hints, comments, the row index
+    bg: black
+    bg_alt: black          # a panel: explore''s status bar
+    bg_surface: dark_gray  # a highlighted surface: the selected cell
+    border: dark_gray      # table separators, menu frames
+
+    # the sixteen, always by name — never a hex, in any tier
+    black: black
+    red: red
+    green: green
+    yellow: yellow
+    blue: blue
+    magenta: purple
+    cyan: cyan
+    white: white
+    bright_black: dark_gray
+    bright_red: light_red
+    bright_green: light_green
+    bright_yellow: light_yellow
+    bright_blue: light_blue
+    bright_magenta: light_purple
+    bright_cyan: light_cyan
+    bright_white: light_gray
+
+    # hues the sixteen do not have
+    orange: yellow
+    purple: purple
+    pink: light_purple
+    teal: cyan
+
+    # meaning
+    accent: blue           # headers, the selected row, the prompt''s highlight
+    accent_alt: purple     # a second accent: the prompt''s last segment
+    ok: green
+    warn: yellow
+    err: red
+    info: blue
+    hint: dark_gray
+    on_accent: black       # text drawn on a coloured surface
+  }
+}

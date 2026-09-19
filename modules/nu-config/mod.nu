@@ -135,6 +135,20 @@ export def doctor []: nothing -> nothing {
   }
   print ""
 
+  # The theme is read from its state file rather than through the terminal
+  # module, which is lazy: this must not be what loads it.
+  print $"(ansi cyan_bold)Theme(ansi reset)"
+  let theme_file = ($nu.data-dir | path join .state theme theme.nuon)
+  if ($theme_file | path exists) {
+    let t = (open $theme_file)
+    let stale = (($t.rendered? | default (date now)) < (ls ((distro-root) | path join themes) | get modified | math max))
+    print $"  ($ok) ($t.name | default 'no theme') — tier ($t.tier), bat ($t.bat), rendered ($t.rendered? | default '?' | format date '%Y-%m-%d %H:%M')"
+    if $stale { print $"  (ansi yellow)a template is newer than the render — `theme sync`(ansi reset)" }
+  } else {
+    print $"  (ansi dark_gray)--(ansi reset) nothing rendered: the terminal's sixteen colours by name — `theme use <name>`"
+  }
+  print ""
+
   print $"(ansi cyan_bold)Plugins(ansi reset)"
   let pl = (plugins list)
   if ($pl | is-empty) {

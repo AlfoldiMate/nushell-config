@@ -1,7 +1,14 @@
 # prompt.nu — prompt
 #
-# Starship owns the prompt when it is installed (config: ~/.config/starship.toml).
-# Without it, Nushell's built-in prompt stays: path on the left, time on the right.
+# Starship owns the prompt when it is installed, and the distro owns starship's
+# configuration: themes/starship.toml, written in the theme's roles, rendered by
+# `theme use` into <your dir>/.state/theme/starship.toml. STARSHIP_CONFIG points
+# at the rendered file, or at the template itself before the first render — its
+# own palette block is the ANSI tier, so the prompt follows the terminal's
+# colours from the first start. A ~/.config/starship.toml of your own is not
+# read; to change the prompt, copy the template to <your dir>/themes/.
+# Without starship, Nushell's built-in prompt stays: path on the left, time on
+# the right.
 #
 # This is written by hand instead of generated with `starship init nu` on
 # purpose. The generated file would land in the vendor autoload dir, which
@@ -18,6 +25,11 @@ def starship-prompt [--right]: nothing -> string {
 }
 
 if (which starship | is-not-empty) {
+  let rendered = ($nu.data-dir | path join .state theme starship.toml)
+  let yours = ($USER_ROOT | path join themes starship.toml)
+  $env.STARSHIP_CONFIG = (
+    if ($rendered | path exists) { $rendered } else if ($yours | path exists) { $yours } else { $DISTRO_ROOT | path join themes starship.toml }
+  )
   $env.STARSHIP_SHELL = "nu"
   $env.STARSHIP_SESSION_KEY = (random chars --length 16)
   $env.PROMPT_COMMAND = {|| starship-prompt }

@@ -13,13 +13,8 @@
 # secret — drop a .nu file in autoload/ instead. Those load last and win.
 
 # ── Colours ───────────────────────────────────────────────────────────────────
-# The default, "terminal", is your terminal's own 16 colours, so `theme` themes
-# the shell by theming Ghostty. Catppuccin brings its own palette
-# in hex; "dark"/"light" are the standard library's. All three lines move
-# together — VIVID_THEME colours `ls`, BAT_THEME colours `bat` and `help`.
-# const THEME = "catppuccin-macchiato"
-# $env.VIVID_THEME = "catppuccin-macchiato"
-# const BAT_THEME = null                    # null follows THEME
+# Not a knob: `theme use <name>` picks one of Ghostty's themes and renders it
+# for tables, ls, bat and the prompt at once (themes/README.md).
 
 # ── Editing ───────────────────────────────────────────────────────────────────
 # $env.config.edit_mode = "vi"              # emacs | vi | helix

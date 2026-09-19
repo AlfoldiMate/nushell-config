@@ -17,27 +17,10 @@
 # exists:  config nu --doc | nu-highlight | less -R
 
 # ── Colours ───────────────────────────────────────────────────────────────────
-# A theme is a file in themes/ named without its .nu, and yours come first on
-# the search path, so a copy in <your dir>/themes/ overrides a shipped one:
-#   ls themes/  →  terminal  catppuccin-{latte,frappe,macchiato,mocha}
-#
-# "terminal", the default, is 16 ANSI colour names and no hex, so the terminal
-# decides what they look like: `theme` picks one of Ghostty's 463 themes and
-# Nushell follows it, with nothing generated and nothing to keep in sync.
-# Catppuccin carries its own 26-colour palette in hex and ignores the terminal.
-# "dark"/"light" are the neutral themes from the standard library.
-const THEME = "terminal"
-
-# vivid theme for `ls` file colours (LS_COLORS); only used when vivid is
-# installed. "ansi" is terminal-relative the way THEME = "terminal" is (`di=0;34`,
-# not `di=0;38;2;138;173;244`); every other vivid theme bakes truecolor.
-# `vivid themes` lists them. Re-run `nu-config tools setup` after changing it.
-$env.VIVID_THEME = "ansi"
-
-# `bat`'s syntax theme — also the colours of `help` and of git diffs through a
-# delta/bat pager. null follows THEME: "ansi" for a terminal-relative theme,
-# the matching flavour for catppuccin-*. `bat --list-themes` lists the rest.
-const BAT_THEME = null
+# Not a knob. The theme is chosen with `theme use <name>` — one of Ghostty's
+# 463 — and rendered for everything at once: tables, `ls`, bat and the prompt
+# follow it, in this window and every new one. Until then the shell uses the
+# terminal's own sixteen colours by name. themes/README.md.
 
 # ── Editor ────────────────────────────────────────────────────────────────────
 # Candidates in order; the first one found on PATH becomes $env.EDITOR,

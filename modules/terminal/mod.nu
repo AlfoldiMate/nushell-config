@@ -6,19 +6,20 @@
 #   terminal list      the terminals this distro knows: installed, running, how to get one
 #   font               pick a Nerd Font, install it, and let a new window render it
 #
-# The two belong together because of how this distro does colour: THEME =
-# "terminal" makes Nushell's theme the terminal's own sixteen ANSI colours, so
-# "change the Nushell theme" means "change Ghostty's theme", which means writing
-# Ghostty's configuration and repainting the running window. theme.nu is the
-# choosing and the painting, ghostty.nu is the writing, and detect.nu answers
-# the two questions the installer asks first: is it installed, and are we in it.
+# The two belong together because of how this distro does colour: there is one
+# theme and it is the terminal's. `theme use` writes Ghostty's configuration,
+# repaints the running window, and renders the shell's own colours — tables,
+# ls, bat, the prompt — from the same palette. theme.nu reads and paints,
+# palette.nu resolves and renders, ghostty.nu writes, and detect.nu answers the
+# two questions the installer asks first: is it installed, and are we in it.
 #
-# Lazy, and measured: loading these files costs 18 ms (meta.nuon carries the
+# Lazy, and measured: loading these files costs 13 ms (meta.nuon carries the
 # number and docs/modules.md the method), for commands a shell uses once in a
 # while. So `theme`, `ghostty` and `font` are trigger words — see meta.nuon.
 
 export use ghostty.nu *
 export use theme.nu *
+export use palette.nu *
 export use detect.nu *
 export use font.nu *
 

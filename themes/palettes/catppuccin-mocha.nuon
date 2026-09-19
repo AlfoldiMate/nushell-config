@@ -1,0 +1,67 @@
+# catppuccin-mocha.nuon — Catppuccin Mocha, all 26 of its colours, for the
+# Ghostty theme of the same name (`theme use "Catppuccin Mocha"`).
+#
+# A palette file is tier three of theme resolution: it names the shaded roles
+# exactly instead of blending them from the theme's background and foreground.
+# The sixteen are still the terminal's — a role like `red` is never overridden
+# here — so what this adds is the greys, the surfaces and the hues ANSI lacks.
+# README.md has the role list; `colours` may hold any names, and a role may be
+# one of them or a colour of its own.
+#
+# The values are Catppuccin's published palette, the same ones bat's and vivid's
+# Catppuccin themes use, which is why those two are named here rather than
+# rendered from the roles.
+{
+  bat: "Catppuccin Mocha"
+  vivid: "catppuccin-mocha"
+  dark: true
+  colours: {
+    rosewater: "#f5e0dc"
+    flamingo: "#f2cdcd"
+    pink: "#f5c2e7"
+    mauve: "#cba6f7"
+    red: "#f38ba8"
+    maroon: "#eba0ac"
+    peach: "#fab387"
+    yellow: "#f9e2af"
+    green: "#a6e3a1"
+    teal: "#94e2d5"
+    sky: "#89dceb"
+    sapphire: "#74c7ec"
+    blue: "#89b4fa"
+    lavender: "#b4befe"
+    text: "#cdd6f4"
+    subtext1: "#bac2de"
+    subtext0: "#a6adc8"
+    overlay2: "#9399b2"
+    overlay1: "#7f849c"
+    overlay0: "#6c7086"
+    surface2: "#585b70"
+    surface1: "#45475a"
+    surface0: "#313244"
+    base: "#1e1e2e"
+    mantle: "#181825"
+    crust: "#11111b"
+  }
+  roles: {
+    fg: text
+    fg_dim: subtext0
+    fg_muted: overlay1
+    bg: base
+    bg_alt: mantle
+    bg_surface: surface0
+    border: surface1
+    orange: peach
+    purple: mauve
+    pink: pink
+    teal: teal
+    accent: blue
+    accent_alt: lavender
+    ok: green
+    warn: yellow
+    err: red
+    info: sapphire
+    hint: overlay0
+    on_accent: crust
+  }
+}

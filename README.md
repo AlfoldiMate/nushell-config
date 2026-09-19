@@ -173,23 +173,25 @@ completer still answers first; the engine adds what needs more context:
 
 ## Theming
 
-The default theme, `"terminal"`, is sixteen ANSI colour **names** and no hex, so
-the terminal's palette *is* the theme. That makes the terminal the source of
-truth, and theming the shell means theming the terminal:
+There is one theme and it is the terminal's. `theme use` writes Ghostty's
+configuration, repaints the window you are in, and renders the shell's own
+colours — tables, `ls`, `bat`, the starship prompt — from the same palette, so
+all of it follows now and in every shell after:
 
 ```nu
 theme                        # scroll Ghostty's 463 themes; the live window is the preview
 theme use "Catppuccin Mocha" # by name, no picker
+theme roles                  # what the shell made of it: each role, its colour, which tier
 theme list                   # every theme, with its sixteen colours
-theme reset                  # back to what Ghostty had before
+theme reset                  # the terminal back to what Ghostty had before
 ```
 
-Nothing is generated and there is nothing to keep in sync — `VIVID_THEME` (`ls`
-colours) and `BAT_THEME` (`bat`, `help`, git diffs) default to `"ansi"` for the
-same reason and follow along. For a palette that ignores the terminal there are
-the four Catppuccin flavours, `const THEME = "catppuccin-mocha"`; for one of your
-own, drop a file into your `themes/` and name it in `THEME`. `themes/README.md`
-is the guide.
+The shell's colours are written in **roles** (`fg_muted`, `border`, `accent`,
+`orange`, the sixteen) and resolved in tiers: the terminal's sixteen by ANSI
+name, always; shades blended from the theme's own hexes, for any theme; and a
+palette file naming them exactly, shipped for Catppuccin. No `THEME` knob —
+what was rendered last is the theme. `themes/README.md` is the guide, and how
+to add a palette or change a template.
 
 The same module configures the terminal itself: `terminal current` says what you
 are running in, `terminal install` offers to install Ghostty, `ghostty shell`
@@ -242,10 +244,10 @@ Nushell cannot `eval` shell script, so tools emit a `.nu` file instead.
 `nu-config tools setup` writes those into `$nu.data-dir/vendor/autoload`, where
 Nushell loads them after `config.nu`. Installation is the switch: an installed
 tool gets its file, an absent one gets nothing, a stale file is removed.
-Currently in the registry: **zoxide**, **atuin**, **carapace**, **vivid** (baked
-into a literal because calling it at every start costs milliseconds for nothing).
-Starship is wired in `conf/prompt.nu` by hand so the vi indicators stay in
-control. Homebrew's command-not-found and direnv are in `conf/tools.nu`.
+Currently in the registry: **zoxide**, **atuin**, **carapace**. Starship and
+vivid are the theme's: `theme use` renders a starship.toml and LS_COLORS from
+the palette, and `conf/prompt.nu` wires starship by hand so the vi indicators
+stay in control. Homebrew's command-not-found and direnv are in `conf/tools.nu`.
 
 ## Plugins
 
@@ -335,5 +337,5 @@ redirects two files, and must be repeated at every launch site).
 | `docs/plugins.md` | why there is no plugin manager |
 | `docs/agent.md` | the agent verbs: design, measured costs, knobs, limits |
 | `completions/README.md` | writing a completion module for a tool |
-| `themes/README.md` | the shipped themes, and writing one |
+| `themes/README.md` | one theme rendered for everything: roles, tiers, palettes, templates |
 | `modules/*/README.md` | one per module: what it is, its commands, its knobs |

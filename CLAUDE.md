@@ -47,6 +47,10 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   and `odata get` applies it. Test the module without touching real state:
   `nu -n` + `use modules/odata *` + `$env.ODATA_SERVICES = {…}` (the scratch
   registry); the hook only in a pty.
+- Theme: one palette in roles, rendered by `theme use` into the user's
+  `.state/theme/` (`themes/README.md`). Templates in `themes/` are written in
+  roles, never hex. `theme resolve <name>` / `theme roles <name>` show a
+  resolution without writing; `theme sync` re-renders after a template edit.
 - Completion lives in `modules/nu-complete` + `completions/<tool>.nu`
   (`docs/completion.md`). Test it without a terminal:
   `nu -l -c '"brew install rip" | commandline complete --detailed'` and

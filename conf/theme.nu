@@ -1,37 +1,39 @@
-# theme.nu — colours. The THEME and BAT_THEME knobs pick them (defaults.nu,
-# overridden in your settings.nu).
+# theme.nu — colours: the theme `theme use` rendered, or the ANSI tier.
 #
-# A theme is a file in themes/ in "source style": it assigns
-# $env.config.color_config, and nothing else — a theme must not set behaviour,
-# because this file runs after your settings.nu and would overwrite you.
-# The default, themes/terminal.nu, is all ANSI names, so the terminal's own
-# palette is the theme. Catppuccin brings hex and also sets `explore`.
-# "dark" and "light" are the standard library's themes, with no file.
+# There is no THEME knob. A theme is chosen with `theme use <name>` (the
+# terminal module), which paints the window, writes Ghostty's config, and
+# renders the shell's own colours into <your dir>/.state/theme/ — the roles
+# for themes/nushell.nu, a starship.toml, vivid's LS_COLORS. This file loads
+# that. Rendered rather than resolved here because a resolve spawns Ghostty to
+# find the theme file and a render runs vivid — 40 ms — while a start is one
+# `open` of a 1 kB NUON, 0.36 ms (median of 21), plus 0.09 ms for LS_COLORS.
+#
+# Before the first `theme use` there is no state, and tier one applies:
+# themes/palettes/ansi.nuon, every role an ANSI name, so the shell follows
+# whatever sixteen colours the terminal paints. Which is also what a machine
+# without Ghostty gets. modules/terminal/palette.nu explains the tiers.
 
-const THEME_FILE = if $THEME in ["dark" "light"] { null } else { $"($THEME).nu" }
-source $THEME_FILE     # `source null` is a no-op; a bare name resolves through NU_LIB_DIRS
+const THEME_STATE = ($nu.data-dir | path join .state theme)
+const THEME_FILE = ($THEME_STATE | path join theme.nuon)
 
-if $THEME == "dark" {
-  use std/config dark-theme
-  $env.config.color_config = (dark-theme)
-} else if $THEME == "light" {
-  use std/config light-theme
-  $env.config.color_config = (light-theme)
-}
-
-# bat: the BAT_THEME knob wins, otherwise follow THEME. bat ships an `ansi`
-# theme that is terminal-relative exactly like themes/terminal.nu, and a
-# Catppuccin flavour for each of ours.
-$env.BAT_THEME = $BAT_THEME | default (
-  if ($THEME | str starts-with "catppuccin-") {
-    $"Catppuccin ($THEME | str replace 'catppuccin-' '' | str capitalize)"
-  } else {
-    "ansi"
+let palette = (
+  if ($THEME_FILE | path exists) { open $THEME_FILE } else {
+    open ($DISTRO_ROOT | path join themes palettes ansi.nuon) | merge { ls_colors: false }
   }
 )
 
-# `ls` file colours (LS_COLORS) come from vivid, baked into a generated file by
-# `nu-config tools setup`; without vivid Nushell's built-in default applies.
+# themes/nushell.nu reads `$c`. A bare name, so a copy in your themes/ wins.
+let c = $palette.roles
+source nushell.nu
 
-# Which themes there are, trying one in the running session, and writing one of
-# your own: themes/README.md.
+# bat, and through it `help` and git diffs paged by delta: a theme bat ships,
+# `ansi` unless the palette named one.
+$env.BAT_THEME = $palette.bat
+
+# `ls` file colours: vivid's output for the theme, baked at render time.
+# Without vivid nothing was rendered and Nushell's built-in colours apply.
+if $palette.ls_colors { $env.LS_COLORS = (open --raw ($THEME_STATE | path join ls_colors)) }
+
+# The prompt's colours are the same roles: conf/prompt.nu points starship at
+# the rendered starship.toml. Which themes there are, the roles, and writing a
+# palette of your own: themes/README.md.

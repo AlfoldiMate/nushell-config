@@ -1,0 +1,222 @@
+# starship.toml — the prompt, written in roles. `theme use` renders it.
+#
+# The distro owns starship's configuration: conf/prompt.nu points
+# STARSHIP_CONFIG at the RENDERED copy, <your dir>/.state/theme/starship.toml,
+# which is this file with `[palettes.distro]` replaced by the theme's resolved
+# roles. Until `theme use` has run this file is used as it is, and the block at
+# the bottom is the ANSI tier (themes/palettes/ansi.nuon in starship's own
+# spellings), so the prompt follows the terminal's sixteen colours from the
+# first start.
+#
+# The colours in the styles are ROLES — red, orange, yellow, green, teal,
+# accent_alt, on_accent — plus the sixteen by name; themes/README.md lists them
+# all. A theme that ships a peach gets a peach for `orange` and one that does
+# not gets a blend of its red and yellow. Never write a hex here.
+#
+# To change the prompt, copy this file to <your dir>/themes/starship.toml and
+# `theme sync`: yours is rendered instead. Keep `palette = 'distro'` and stick
+# to roles, and every theme keeps fitting it.
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = """
+[](red)\
+$os\
+$username\
+[](bg:orange fg:red)\
+$directory\
+[](bg:yellow fg:orange)\
+$git_branch\
+$git_status\
+[](fg:yellow bg:green)\
+$c\
+$rust\
+$golang\
+$nodejs\
+$php\
+$java\
+$kotlin\
+$haskell\
+$python\
+[](fg:green bg:teal)\
+$conda\
+[](fg:teal bg:accent_alt)\
+$time\
+[ ](fg:accent_alt)\
+$cmd_duration\
+$line_break$character"""
+
+palette = 'distro'
+
+[os]
+disabled = false
+style = "bg:red fg:on_accent"
+
+[os.symbols]
+Windows = ""
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = "󰀵"
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+AOSC = ""
+Arch = "󰣇"
+Artix = "󰣇"
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
+
+[username]
+show_always = true
+style_user = "bg:red fg:on_accent"
+style_root = "bg:red fg:on_accent"
+format = '[ $user]($style)'
+
+[directory]
+style = "bg:orange fg:on_accent"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = "󰝚 "
+"Pictures" = " "
+"Developer" = "󰲋 "
+
+[git_branch]
+symbol = ""
+style = "bg:yellow"
+format = '[[ $symbol $branch ](fg:on_accent bg:yellow)]($style)'
+
+[git_status]
+style = "bg:yellow"
+format = '[[($all_status$ahead_behind )](fg:on_accent bg:yellow)]($style)'
+
+[nodejs]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[c]
+symbol = " "
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[rust]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[golang]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[php]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[java]
+symbol = " "
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[kotlin]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[haskell]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+
+[python]
+symbol = ""
+style = "bg:green"
+format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:on_accent bg:green)]($style)'
+
+[docker_context]
+symbol = ""
+style = "bg:teal"
+format = '[[ $symbol( $context) ](fg:on_accent bg:teal)]($style)'
+
+[conda]
+symbol = "  "
+style = "fg:on_accent bg:teal"
+format = '[$symbol$environment ]($style)'
+ignore_base = false
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bg:accent_alt"
+format = '[[  $time ](fg:on_accent bg:accent_alt)]($style)'
+
+[line_break]
+disabled = false
+
+[character]
+disabled = false
+success_symbol = '[](bold fg:green)'
+error_symbol = '[](bold fg:red)'
+vimcmd_symbol = '[❮](bold fg:green)'
+vimcmd_replace_one_symbol = '[❮](bold fg:accent_alt)'
+vimcmd_replace_symbol = '[❮](bold fg:accent_alt)'
+vimcmd_visual_symbol = '[❮](bold fg:yellow)'
+
+[cmd_duration]
+show_milliseconds = true
+format = " in $duration "
+style = "bg:accent_alt"
+disabled = false
+show_notifications = false
+min_time_to_notify = 45000
+
+
+# ── the ANSI tier; `theme use` replaces this block ────────────────────────────
+[palettes.distro]
+fg_muted = "bright-black"
+bg = "black"
+bg_alt = "black"
+bg_surface = "bright-black"
+border = "bright-black"
+black = "black"
+red = "red"
+green = "green"
+yellow = "yellow"
+blue = "blue"
+magenta = "purple"
+cyan = "cyan"
+white = "white"
+bright_black = "bright-black"
+bright_red = "bright-red"
+bright_green = "bright-green"
+bright_yellow = "bright-yellow"
+bright_blue = "bright-blue"
+bright_magenta = "bright-purple"
+bright_cyan = "bright-cyan"
+bright_white = "bright-white"
+orange = "yellow"
+purple = "purple"
+pink = "bright-purple"
+teal = "cyan"
+accent = "blue"
+accent_alt = "purple"
+ok = "green"
+warn = "yellow"
+err = "red"
+info = "blue"
+hint = "bright-black"
+on_accent = "black"
