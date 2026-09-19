@@ -206,7 +206,9 @@ export def "nu-complete git spec" []: nothing -> record {
   }
 }
 
-def complete-git [spans: list<string>] { try { nu-complete run (nu-complete git spec) $spans } catch { null } }
+def complete-git [token, place?, buffer?] {
+  try { nu-complete run (nu-complete git spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+}
 
 # `main` so that `use git.nu *` yields `git`.
 @complete "complete-git"

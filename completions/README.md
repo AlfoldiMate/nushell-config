@@ -6,9 +6,10 @@ runs them, and `docs/completion.md` explains how the three completion layers
 fit together. This file is the contract: what a module must look like, what it
 may assume, and what it has to prove before it is wired in.
 
-Verified against Nushell 0.115.1. Read [What changes in the next
-release](#what-changes-in-the-next-release) before writing a new module — the
-completer calling convention changed upstream and is already merged.
+Verified against Nushell 0.115.1 and against 0.115.2, the first build with
+the unified completer inputs; every module here runs on both.
+The completer's own signature is the one place they differ — read [The
+completer's input](#the-completers-input) before writing a new module.
 
 ## What a module owes you
 
@@ -72,7 +73,11 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 }
 
 # `null` on any failure: Nushell then falls back to files rather than to nothing.
-def complete-<tool> [spans: list<string>] { try { nu-complete run (nu-complete <tool> spec) $spans } catch { null } }
+# The parameter names and the inner `try`s are load-bearing on both releases —
+# see "The completer's input".
+def complete-<tool> [token, place?, buffer?] {
+  try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+}
 
 # `main`, because a module cannot export an extern of its own name:
 # `use <tool>.nu *` then yields `<tool>`.
@@ -147,7 +152,7 @@ at half its budget.
 ## The spec format
 
 A spec is a plain record, meant to be read and edited by a person.
-`engine.nu` is 180 lines and is the truth; this is what it means.
+`engine.nu` is 220 lines and is the truth; this is what it means.
 
 ```nu
 {
@@ -163,7 +168,8 @@ A spec is a plain record, meant to be read and edited by a person.
 
 How the engine walks a line:
 
-- `spans` is `[tool, arg…, partial]`, the partial being `""` at a fresh slot.
+- `nu-complete spans` hands the walk `[tool, arg…, partial]`, the partial
+  being `""` at a fresh slot, whichever shape the release gave the completer.
 - A token starting with `-` is a flag. Root flags apply everywhere; a flag with
   an `arg` consumes the next token, and `--flag=value` is understood.
 - The first non-flag token that names a subcommand descends into it.
@@ -315,6 +321,9 @@ Each of these cost time once.
   files.
 - **Wrap the completer body in `try { … } catch { null }`**, and test the inner
   command directly when a slot misbehaves.
+- **An unfilled completer parameter is unbound, not null**, on 0.115.1 — see
+  "The completer's input". The symptom is a module that works on one release
+  and silently offers files on the other.
 - **`lines --skip-empty`, not a closure filter.** Over 16k lines the closure
   costs ~12 ms and the flag costs nothing: 15 ms → 4 ms.
 - **No hard-coded home directory.** `$nu.home-dir`, `$env.HOMEBREW_PREFIX?`,
@@ -326,33 +335,55 @@ Each of these cost time once.
 - **"NO RECORDS FOUND"** under the prompt is Reedline's message for an empty
   menu, not an error.
 
-## What changes in the next release
+## The completer's input
 
 Nushell [#18791](https://github.com/nushell/nushell/pull/18791) unified how
-every completer receives its input. It is merged upstream but **not in 0.115.1**,
-so nothing in this directory uses it yet. It matters here for two reasons.
-
-A completer's parameters are now bound **by name** from a fixed set — `token`
+every completer receives its input, and landed after 0.115.1. A completer's
+parameters are now bound **by name** from a fixed set — `token`
 (`{text, kind, span}`), `place` (`{cursor, target, kind, flag?, index?,
-shape?}`) and `buffer` (the whole line up to the cursor) — instead of by
-position. The old shapes keep working through a compatibility bridge that emits
-a deprecation warning, so `def complete-<tool> [spans: list<string>]` will still
-be handed its span list and will also start printing a warning in the REPL. The
-migration is `[buffer]` plus parsing, or `[token, place]` for the common case.
+shape?}`) and `buffer` — instead of by position. Whether a binary has it:
+`nu -n -c 'attr interactive'`, exit 0 → yes.
 
-The new inputs are worth having, not just a tax: `place.target` is the exact
-range a suggestion replaces (no arithmetic), `place.kind` and `place.shape` say
-whether the cursor is on a flag value or a positional without walking the spans,
-returning `{completions, fallback: true}` chains to carapace without calling it
-by hand, and `@interactive` lets a completer own the terminal to drive an `fzf`
-picker. One caveat found by testing the merged build: `options.filter: true`
-does **not** narrow a command-wide completer's output, so the engine keeps
-filtering its own results — do not remove that on the strength of the PR
-description.
+Every module here is written for both releases, and the whole of the
+difference is one line:
 
-Until the release lands, write modules the way this file describes. When it
-lands, `modules/nu-complete/engine.nu` changes once and every module here
-follows — which is the reason the `spans` contract lives in exactly one place.
+```nu
+def complete-<tool> [token, place?, buffer?] {
+  try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+}
+```
+
+- **The names matter.** They are what the new build binds to; name one `spans`
+  and it still works, through a compatibility bridge that queues a deprecation
+  warning the REPL prints once a session.
+- **The `try`s matter more.** 0.115.1 fills only the first parameter, and it
+  does not fill the others with null — it never binds them, so naming `$place`
+  there is `variable not found` at runtime. A completer that errors is silent,
+  so the whole module would quietly degrade to file completion on the older
+  release. The guards are the compatibility.
+- **`nu-complete spans` is the single point of change.** It returns 0.115.1's
+  span list as it stands, and rebuilds the identical list from `buffer` on a
+  newer build. Everything downstream — `nu-complete run`, every `{|ctx| …}`
+  source, `ctx.spans` — is unchanged on both.
+
+Two findings from testing the merged build, both of which read the other way
+in the PR description:
+
+- `options.filter: true` does **not** narrow a command-wide completer's
+  output. The engine keeps filtering its own results, honouring the user's
+  `completions.algorithm` and `case_sensitive`.
+- `fallback: true` in the returned envelope does **not** chain to carapace.
+  For a declared `extern` — which every module here has — it means "and also
+  what Nushell would have offered", i.e. file completion; the external
+  completer is not consulted at all. `fallback: "external"` in a spec still
+  means what it says, because `nu-complete external` calls carapace by hand.
+
+Not yet used, and worth knowing about: `place.target` is the exact range a
+suggestion replaces, `place.kind` and `place.shape` say whether the cursor is
+on a flag value or a positional without walking the spans, `@interactive` lets
+a completer own the terminal (an `fzf` picker for `brew install`), and
+`commandline complete --input` prints the three inputs for a line without
+running any completer — the fastest way to see what a slot looks like.
 
 ## Where everything is
 

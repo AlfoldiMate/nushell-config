@@ -358,8 +358,18 @@ def dir-fallback [partial: string, position: int]: nothing -> list<record> {
 
 # ── The menu source ───────────────────────────────────────────────────────────
 
-# Candidates for `buffer` (the line up to the cursor) at `position`.
-export def "nu-complete smart" [buffer: string, position: int]: nothing -> list<record> {
+# Candidates for `buffer` at `position`.
+#
+# `position` is an int on 0.115.1, where the menu source is called
+# `{|buffer, position| ...}`, and the `place` record on a build with #18791,
+# where the source names `place` and gets it bound by name. The two also
+# disagree about `buffer`: `input_mode: cursor_prefix` made it the line up to
+# the cursor, the unified inputs hand the whole recorded line, so it is cut
+# here. Everything below therefore sees what it always saw — the prefix, and a
+# byte offset into it (`str length` and `str substring` are byte-indexed).
+export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<record> {
+  let position = if ($position | describe) == "int" { $position } else { $position.cursor }
+  let buffer = ($buffer | str substring 0..<$position)
   let base = (try { $buffer | commandline complete --detailed } catch { [] })
   let segs = (segments $buffer)
   let seg = ($segs | last)

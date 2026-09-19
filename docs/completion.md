@@ -1,7 +1,9 @@
 # Completion: how Tab works here, and how to teach it a new tool
 
-Verified against Nushell 0.115.1 on 2026-09-10. Every cost below was measured
-with `timeit` on this machine; nothing is estimated.
+Verified against Nushell 0.115.1 on 2026-09-10 and against 0.115.2 (the
+unified completer inputs, #18791) on 2026-09-19; it runs on both. Every cost
+below was measured with `timeit` or `hyperfine` on this machine; nothing is
+estimated.
 
 ## Why not just carapace
 
@@ -31,9 +33,10 @@ Tab
 
 **Layer 2 — specs for tools** (`modules/nu-complete/engine.nu`). Nushell 0.115
 added the command-wide completer attribute: `@complete "name"` before an
-`extern` sends the whole argument list to `name` as `spans` (command name,
-every argument, the partial token). `nu-complete run <spec> <spans>` walks
-the spans through a spec — subcommands, flags with values, positionals,
+`extern` hands `name` the whole argument list. `nu-complete spans` turns what
+it is handed — one record on a build with #18791, one positional list on
+0.115.1 — into the span list (command name, every argument, the partial
+token), and `nu-complete run <spec> <spans>` walks it through a spec — subcommands, flags with values, positionals,
 rest — and asks the right *source* for candidates. Sources read the tool's
 own files or run one cheap command, and cache through `nu-complete cache`.
 Specs work everywhere Nushell completes, including editors.
@@ -155,7 +158,9 @@ in `sources`. The engine filters with the user's `completions.algorithm` and
    ```nu
    use nu-complete *
    def spec [] { { description: "…", fallback: "external", subcommands: { … } } }
-   def complete-tool [spans: list<string>] { try { nu-complete run (spec) $spans } catch { null } }
+   def complete-tool [token, place?, buffer?] {
+     try { nu-complete run (spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+   }
    @complete "complete-tool"
    export extern main [...args]      # `main`: a module cannot export an extern of its own name
    ```
@@ -217,71 +222,71 @@ cost of each slot.
 - "NO RECORDS FOUND" under the prompt is Reedline's message for an empty
   menu, not an error.
 
-## The next release: what changes here, and what gets better
+## The unified completer inputs
 
 Nushell [#18791](https://github.com/nushell/nushell/pull/18791) ("unify
-completer inputs and output contracts") merged upstream on 2026-09-09. It is
-**not in 0.115.1**, so nothing below is in effect yet; the check for a given
-binary is `nu -n -c 'attr interactive'` (exit 0 → it has it). Everything here
-was verified on 2026-09-18 by building that commit and running this config
-under it, not read off the PR description. The details are in
-`.claude/skills/nushell/references/completions.md`.
+completer inputs and output contracts") merged upstream on 2026-09-09 and is in
+every build after 0.115.1. Every completer — per-argument, `@complete`, the
+external closure and a menu `source` — is handed one record whose fields bind
+to the parameters it **names**: `token` (`{text, kind, span}`), `place`
+(`{cursor, target, kind, flag?, index?, shape?}`) and `buffer`. Whether a given
+binary has it: `nu -n -c 'attr interactive'`, exit 0 → yes.
 
-Every completer — per-argument, `@complete`, the external closure, and a menu
-`source` — now receives one record whose fields bind to the parameters it
-**names**: `token` (`{text, kind, span}`), `place` (`{cursor, target, kind,
-flag?, index?, shape?}`), `buffer` (the whole line up to the cursor). Old
-signatures keep working through a bridge that prints a deprecation warning the
-first time it is used.
+This config is migrated and still runs on 0.115.1. Three signatures changed:
 
-**What breaks (loudly, not silently).** Two places ride the bridge:
-
-| Where | Today | Becomes |
+| Where | Now | What 0.115.1 puts there |
 |---|---|---|
-| `completions/*.nu` → `def complete-<tool> [spans: list<string>]` | gets the span list | `[buffer]` and parse, or `[token, place]` |
-| `conf/completions.nu` → `source: {\|buffer, position\| nu-complete smart $buffer $position }` | `buffer` already binds to the *new* whole-line value; `position` comes off the bridge | `{\|buffer, place\| nu-complete smart $buffer $place.cursor }` |
+| `completions/*.nu` | `def complete-<tool> [token, place?, buffer?]` | the old span list in `token` |
+| `conf/completions.nu` | `source: {\|buffer, place\| nu-complete smart $buffer $place }` | the line up to the cursor, and the old position int |
+| the generated `vendor/autoload/carapace.nu` | a wrapper appended by `nu-config tools setup`, because carapace still generates `{\|spans\| …}` | the same wrapper, taking the same path |
 
-Both keep working until the bridge is removed. The `spans` contract exists in
-exactly one place — `nu-complete run` in `modules/nu-complete/engine.nu` — so
-the tool modules do not each need a rewrite.
+`nu-complete spans` in `engine.nu` is the single place the two releases meet:
+it returns 0.115.1's span list unchanged, and on a newer build rebuilds the
+same list from `buffer` — `ast --flatten` for quote-aware tokens (30 µs),
+`place.target.start` for where the token under the cursor begins, the last
+command head before it for where this command's tokens start. It was checked
+token for token against 0.115.1's real spans over quoted arguments,
+`--flag=value`, pipelines, `;`, a fresh slot and an unterminated quote.
 
-**What gets better.** The new surface removes work this engine currently does
-by hand:
+**The trap.** 0.115.1 does not hand the parameters it does not know a null —
+it never binds them, so naming `$place` there is `variable not found` at
+runtime, and a completer that errors is silent: Nushell shows files. That is
+why every call site reads `(try { $place })`, and why the same guards appear in
+the carapace wrapper.
 
-- `place.target` is the exact range a suggestion replaces, including where a
-  completion spans several tokens (a cell path, a multi-word head). It replaces
-  `replace-span` in `smart.nu` and the arithmetic at all four call sites.
-- `place.kind` (`positional` | `flag-name` | `flag-value` | `command`), `place.flag`,
-  `place.index` and `place.shape` come from the parser. `slot-of` and
-  `shape-at` in `smart.nu` re-derive exactly this by walking tokens; for
-  built-ins, which is all `smart.nu` handles, the parser's answer is better than
-  ours. The spec walk in `engine.nu` still has to do its own pass, because
-  Nushell sees `...args` and knows nothing of the tool's subcommand tree.
-- `options.filter: true` is *supposed* to hand filtering back to Nushell, which
-  would retire `nu-complete filter`. **It does not work for a command-wide
-  completer in the merged build** — the flag is read, but the narrowing matches
-  against an empty prefix, so nothing is filtered (a parameter completer on the
-  same line filters correctly). `nu-complete filter` stays until that is fixed
-  upstream; re-test with the check at the top of this section.
-- `fallback: true` in the returned envelope means "keep my results and continue
-  to the next source", which is what `nu-complete external` does by calling
-  carapace by hand. The `answered` bookkeeping in `nu-complete run` exists only
-  to decide that, and could go.
+What the new inputs bought, and what they did not:
+
+- **No deprecation warnings.** The bridge for the old shapes queues one per
+  session, printed in the REPL once the line editor hands back the line. Every
+  slot in this config — externs, the menu, carapace's own closure — is off it.
+- `place.target` is the exact range a suggestion replaces. `smart.nu` still
+  computes its own (`replace-span`, four call sites): it is correct, and the
+  menu path would need the same arithmetic for the items it invents. Worth
+  revisiting, not urgent.
+- `options.filter: true` still does **not** narrow a command-wide completer's
+  output in the merged build — the flag is read, but the narrowing matches
+  against an empty prefix. `nu-complete filter` stays.
+- `fallback: true` in the returned envelope is **not** "chain to carapace",
+  which is what the PR description reads like and what this file claimed
+  before it was measured. For a *declared* extern it means "and also what
+  Nushell would have offered", which is file completion; the external
+  completer is never consulted. Measured: a completer returning
+  `{completions: [], fallback: true}` with an external completer set offers
+  files and never carapace, on the same line where an undeclared command does
+  reach it. `nu-complete external` goes on calling carapace by hand, and the
+  `answered` bookkeeping in `nu-complete run` stays with it.
 - `@interactive` runs a completer on the line-editor thread with the terminal,
   so a slot with thousands of candidates (`brew install`) could offer an `fzf`
-  picker instead of a columnar menu.
-- `buffer` reaches a `@complete` completer directly. Layer 3 still has to exist
-  — built-ins cannot carry `@complete` without shadowing them, and that lists
-  them twice — but a tool module could do its own whole-line reasoning without
-  going through the menu.
+  picker instead of a columnar menu. Unbuilt.
 - `commandline complete --input` returns the three inputs without running a
-  completer, which is a better debugging tool than everything in the Debugging
-  section below.
+  completer, which is the fastest way to see what a slot actually looks like:
 
-None of this is urgent: it is a simplification of code that works, and it costs
-a release upgrade. The order to do it in when the release lands is the table
-first (stop the warnings), then `place.target`, then `options.filter` and
-`fallback`, each verifiable with the test lines in `completions/README.md`.
+  ```nu
+  nu -l -c '"git switch ma" | commandline complete --input'
+  # {token: {text: ma, kind: value, span: {start: 11, end: 13}},
+  #  place: {cursor: 13, target: {start: 11, end: 13}, kind: positional, index: 0, shape: any},
+  #  buffer: "git switch ma"}
+  ```
 
 ## Known limits
 

@@ -61,7 +61,11 @@ if $SMART_TAB {
       match_text: green
       selected_match_text: green_reverse
     }
-    source: {|buffer, position| nu-complete smart $buffer $position }
+    # `place` is a name the unified completer inputs bind (#18791): on 0.115.2
+    # it arrives as a record, on 0.115.1 as the old position int. Naming it
+    # `position` still works there and warns here. `nu-complete smart` takes
+    # both. Its `buffer` differs too — see the note on that command.
+    source: {|buffer, place| nu-complete smart $buffer $place }
   }]
   # The stock Tab chain, pointed at the smart menu.
   $env.config.keybindings ++= [{

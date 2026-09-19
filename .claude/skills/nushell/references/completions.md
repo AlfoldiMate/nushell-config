@@ -591,8 +591,15 @@ also ask the next source". Verified: a completer returning
 `{completions: [CUSTOM], fallback: true}` at `f1 alp` yields
 `[CUSTOM, alpaca.txt]` — its own result plus prefix-matched file completion —
 where `fallback: false` yields `[CUSTOM]` and returning `null` yields
-`[alpaca.txt]`. That replaces a completer that calls the external completer by
-hand to chain to carapace.
+`[alpaca.txt]`.
+
+> **It is not a way to reach carapace.** "The next source" for a *declared*
+> `extern` is Nushell's own argument completion, which is files; the external
+> completer is never consulted for a command it has an `extern` for. Verified:
+> a `@complete` completer on an extern returning `{completions: [], fallback:
+> true}` with `$env.config.completions.external.completer` set offers files and
+> nothing from the external closure, while an undeclared command on the same
+> line reaches it. A completer that wants carapace still calls it by hand.
 
 Malformed output is isolated: a bad suggestion, style, span or option is
 reported in the completion log without discarding the valid ones around it.
@@ -645,15 +652,26 @@ def complete-command [token: record] { [my-shortcut] ++ ($token.text | commandli
 
 ### What it means for this config
 
-`modules/nu-complete/engine.nu` takes `spans`, and `conf/completions.nu`'s menu
-source is `{|buffer, position| ... }`: both ride the bridge and both will warn
-on upgrade. Verified by running this config under the build — `git checkout `
-still completes branches, remotes and changed files, `nu-complete smart
-"ls | where " 11` still returns typed columns, and each tool module prints one
-deprecation warning pointing at its `def complete-<tool> [spans: ...]` line.
+Migrated on 2026-09-19, and still running on 0.115.1. Three signatures moved:
+`def complete-<tool> [token, place?, buffer?]` in each `completions/*.nu`,
+`source: {|buffer, place| ... }` for the Tab menu in `conf/completions.nu`, and
+a wrapper appended to the generated `vendor/autoload/carapace.nu` by
+`nu-config tools setup`, because carapace itself still emits `{|spans| ... }`
+and every fallthrough to it was printing the warning.
 
-The fixes are small and local: `engine.nu` is the only place the `spans`
-contract exists, and the menu source is one line. Worth taking at the same time:
-`place.target` replaces the hand-computed replacement spans in `smart.nu`, and
-`fallback: true` can retire `nu-complete external`. `nu-complete filter` has to
-stay until the `options.filter` bug above is fixed.
+`nu-complete spans` in `engine.nu` is the only place that knows which release
+it is on: it returns the old span list unchanged, and rebuilds the same list
+from `buffer` (`ast --flatten`, `place.target.start`, cut at the last command
+head) on a newer build. Everything downstream is untouched.
+
+**The trap that cost the most.** 0.115.1 binds only the first parameter and
+leaves the rest *unbound* rather than null, so `if $place == null` is
+`variable not found` there — and since a completer that errors is silent, the
+symptom is file completion on the old release and nothing in the log. Every
+call site reads `(try { $place })` for that reason.
+
+Still open: `place.target` could replace the hand-computed replacement spans in
+`smart.nu`, and `@interactive` could give `brew install` an `fzf` picker.
+`nu-complete filter` stays until the `options.filter` bug above is fixed, and
+`nu-complete external` stays because `fallback: true` does not reach carapace
+for a declared extern (see above).

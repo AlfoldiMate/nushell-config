@@ -14,7 +14,8 @@ git checkout <Tab>        # branches by recency, then remotes and tags
 | Command | Does |
 |---|---|
 | `nu-complete run <spec> <spans>` | positional completion for an extern, from a spec (`engine.nu`) |
-| `nu-complete smart <buffer> <pos>` | the Tab menu source: the only place that sees the whole line (`smart.nu`) |
+| `nu-complete spans <token> <place> <buffer>` | the completer's input as a span list, on 0.115.1 and on #18791 builds alike (`engine.nu`) |
+| `nu-complete smart <buffer> <pos>` | the Tab menu source: the only place that sees the whole line (`smart.nu`). `<pos>` is an int or a `place` record |
 | `nu-complete cache <key> <ttl> {}` | memoise a slow source for the session (`cache.nu`) |
 | `nu-complete status` | what is cached, and where |
 | `nu-complete warm` | build the signature table (run in a background job at startup) |

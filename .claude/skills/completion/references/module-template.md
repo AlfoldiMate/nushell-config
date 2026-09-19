@@ -61,7 +61,13 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 }
 
 # null on any failure: Nushell then falls back to files instead of nothing.
-def complete-<tool> [spans: list<string>] { try { nu-complete run (nu-complete <tool> spec) $spans } catch { null } }
+# The three names are what nushell#18791 binds by name; the inner `try`s are
+# what keeps the module working on 0.115.1, which binds only the first and
+# leaves the others UNBOUND — naming `$place` there is a runtime error, and a
+# completer that errors is silent. See completions/README.md.
+def complete-<tool> [token, place?, buffer?] {
+  try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+}
 
 # `main`: a module cannot export an extern of its own name; `use <tool>.nu *` yields `<tool>`.
 @complete "complete-<tool>"
@@ -83,11 +89,13 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 }
 ```
 
-`%open` of a 200 kB JSON is ~5 ms, once per hour per shell.
+`%open` of that 195 kB JSON is 1.2-1.7 ms, once per hour per shell.
 
 ## Spec semantics (engine.nu)
 
-- `spans` = `[tool, arg…, partial]`; the partial is `""` at a fresh slot.
+- `nu-complete spans` normalises the completer's input to
+  `[tool, arg…, partial]` on either release; the partial is `""` at a fresh
+  slot.
 - Walk: a token starting with `-` is a flag (root flags apply everywhere;
   a flag with `arg` consumes the next token, or `--flag=value`); the first
   non-flag token that names a subcommand descends; the rest are positionals.
