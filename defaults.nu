@@ -130,7 +130,8 @@ $env.NU_COMPLETE_EVAL = "safe"
 # a sourced menu is handed the pre-splice line after that insert, so the next
 # Tab replaces the wrong span: `bits r` Tab Tab Enter lands as `bits ror o`,
 # `theme use Cat` as `"Catppuccin tppuccin`. 0.115.1 is clean; set this true
-# there if you miss it. Verified in a pty, 2026-09-19 (docs/concepts/completion.md).
+# there if you miss it. Verified in a pty, 2026-09-19 (docs/concepts/completion.md);
+# filed as nushell/nushell#19053, and #45 here is the flip back once it lands.
 $env.config.completions.partial = false
 
 # ── Modules ───────────────────────────────────────────────────────────────────
