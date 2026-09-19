@@ -28,9 +28,10 @@ nu ~/.local/share/nushell-distro/install.nu
 ```
 
 `install.nu` is seven screens and every one of them is skippable: where things
-go, which modules to enable, your terminal, the theme (previewed by painting the
-live terminal), the font, the tools it finds, and then the plan. Nothing is
-written before you say yes to that last screen.
+go, which modules to enable, your terminal (and that a new Ghostty window
+starts Nushell), the theme (previewed by painting the live terminal), the font,
+the tools it finds, and then the plan. Nothing is written before you say yes to
+that last screen.
 
 ```nu
 nu install.nu              # the seven screens
@@ -191,9 +192,10 @@ own, drop a file into your `themes/` and name it in `THEME`. `themes/README.md`
 is the guide.
 
 The same module configures the terminal itself: `terminal current` says what you
-are running in, `terminal install` offers to install Ghostty, `ghostty settings`
-shows what this config set and `font` installs one of fifteen Nerd Fonts and
-previews it in a window of its own.
+are running in, `terminal install` offers to install Ghostty, `ghostty shell`
+makes Nushell what a new window starts, `ghostty settings` shows what this
+config set and `font` installs one of fifteen Nerd Fonts and previews it in a
+window of its own.
 
 ## Agent
 

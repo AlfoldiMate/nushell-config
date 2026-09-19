@@ -2,6 +2,7 @@
 #
 #   theme              pick one of Ghostty's 463 themes, the terminal as preview
 #   ghostty status     what this distro has written into Ghostty's config
+#   ghostty shell      a new Ghostty window starts Nushell
 #   terminal list      the terminals this distro knows: installed, running, how to get one
 #   font               pick a Nerd Font, install it, and let a new window render it
 #

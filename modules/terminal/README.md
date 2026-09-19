@@ -7,6 +7,7 @@ terminal list                  # which terminals this distro knows, and what is 
 theme                          # pick from Ghostty's 463, the terminal is the preview
 font                           # pick a Nerd Font, install it, see it in a real window
 theme use "TokyoNight Storm"   # or name one; Tab completes them
+ghostty shell                  # a new Ghostty window starts Nushell
 ghostty status                 # what this distro has written into Ghostty's config
 ```
 
@@ -27,7 +28,9 @@ asks before either of them runs.
 | `theme preview <name>` | paint this session, change nothing on disk |
 | `theme reset` | hand the palette back to Ghostty's config — the way out of a preview |
 | `theme use <name>` | paint, and keep: `ghostty set` persists it for new windows |
-| `ghostty status` | the config Ghostty reads, what we own in it, and the theme Ghostty resolves |
+| `ghostty status` | the config Ghostty reads, what we own in it, and the theme and shell Ghostty resolves |
+| `ghostty shell [--reset]` | make Nushell what a new window starts; `--reset` hands that back to `SHELL` / passwd |
+| `ghostty nu-path` | the nu that `shell` writes: the one on PATH, not the running binary |
 | `ghostty set <record>` | write keys into our own included file (a null value removes one) |
 | `ghostty reset` | remove our file and the one include line; their config is left as it was |
 | `terminal list` | every terminal in the registry: installed, running, configured, where its binary is |
@@ -204,6 +207,31 @@ created, even on macOS where `ghostty +edit-config` would have picked Applicatio
 Support: a file under `~/.config` is the one a dotfiles repo can keep, and
 Ghostty reads it as long as Application Support holds nothing.
 
+### Nushell is the shell because Ghostty is told so, not `chsh`
+
+Ghostty starts `SHELL`, and failing that the passwd shell — zsh on a stock Mac —
+so a freshly installed distro would open a terminal that runs something else.
+`ghostty shell` (and `install.nu`, screen 3, the one question there whose
+default is yes) writes `command = <nu>` into our included file, where it wins
+over a `command =` in the user's own config like every other key we own, and
+`ghostty shell --reset` takes it out again.
+
+Not `chsh`: macOS refuses a shell that is not in `/etc/shells`, a Homebrew `nu`
+moves at every upgrade, and the scripts and tools that read `$SHELL` expecting
+POSIX would break. Telling the terminal leaves the login shell alone.
+
+The value is the `nu` found on PATH (`ghostty nu-path`), not `$nu.current-exe`:
+PATH holds the path the user installed — `/opt/homebrew/bin/nu`,
+`~/.cargo/bin/nu` — while the running binary can be the versioned Cellar file
+behind that symlink, which stops existing at the next `brew upgrade`. It is a
+bare absolute path with no `-l`: verified on macOS with Ghostty 1.3.1 that a
+`command` with no arguments is still launched through `login -flp <user>
+/bin/sh -c "exec -l <nu>"`, and Nushell reads the dash in `argv[0]` the way
+every shell does, so the window gets a login nu (`$nu.is-login == true`) with
+`login`'s environment. The check was a scratch `XDG_CONFIG_HOME` whose
+`config.nu` wrote `$nu.is-login` to a file and exited, opened with `ghostty
+--command=<nu>`.
+
 ### Why it is lazy
 
 Loading these files costs 18 ms, for commands a shell uses once in a while,
@@ -235,7 +263,7 @@ load.nu      `use terminal *` + activate
 meta.nuon    description, the ghostty dependency, no knobs
 theme.nu     listing, parsing, painting, and the picker
 font.nu      the Nerd Font registry, installing, and the preview window
-ghostty.nu   finding Ghostty and its config, and the one line we add to it
+ghostty.nu   finding Ghostty and its config, the one line we add to it, and the shell
 detect.nu    the terminal registry: installed, running, how to get one
 ```
 
@@ -268,3 +296,5 @@ detect.nu    the terminal registry: installed, running, how to get one
   and has not been run.
 - Untested on Linux and Windows. The config candidates and the resources
   directory are derived per platform but only the macOS paths have been run.
+  That includes `ghostty shell`: whether Ghostty on Linux starts a bare
+  `command` as a login shell has not been checked, only that it starts it.

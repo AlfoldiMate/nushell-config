@@ -1,8 +1,9 @@
 # ghostty — one appended line in the user's config, and one file the distro owns
 #
 # With THEME = "terminal" the terminal's 16 ANSI colours ARE the Nushell theme,
-# so choosing a theme means setting Ghostty's. That is done without ever
-# rewriting the user's own config:
+# so choosing a theme means setting Ghostty's. And a Nushell distro that
+# configures the terminal has one more thing to say to it: start Nushell
+# (`ghostty shell`). Both are done without ever rewriting the user's own config:
 #
 #   <ghostty dir>/nushell-distro.ghostty    ours, rewritten freely
 #   config-file = ?nushell-distro.ghostty   one line appended to theirs, once
@@ -160,8 +161,52 @@ export def "ghostty status" []: nothing -> record {
     ours: (ours-path)
     included: (if ($cfg | path exists) { includes? $cfg } else { false })
     settings: (ghostty settings)
-    live_theme: (live-theme)
+    live_theme: (live "theme")
+    # What a new window starts. Ghostty's own default when nothing sets it:
+    # SHELL, then the passwd entry — zsh on a stock Mac.
+    shell: (live "command")
   }
+}
+
+# ── the shell ─────────────────────────────────────────────────────────────────
+#
+# Ghostty starts SHELL, or failing that the passwd shell, and neither is Nushell
+# on any machine this distro has just been installed on. Changing the login
+# shell (`chsh`) is the wrong fix: macOS insists on /etc/shells, a Homebrew `nu`
+# moves at every upgrade, and scripts that assume a POSIX $SHELL break. So the
+# terminal is told instead — `command = <nu>` in our included file, which wins
+# over a `command =` in their own config like every other key we own.
+#
+# Verified on macOS with Ghostty 1.3.1: a bare absolute path, no arguments, is
+# still launched through `login -flp <user> /bin/sh -c "exec -l <nu>"`, and
+# Nushell reads the dash in argv[0] the way every shell does, so the window
+# gets a LOGIN nu ($nu.is-login == true) with login's environment. No `-l` in
+# the value, then — it would only push Ghostty into `/bin/sh -c` argument
+# parsing for nothing.
+
+# The nu Ghostty should run. The one on PATH, not `$nu.current-exe`: PATH holds
+# the path the user installed — /opt/homebrew/bin/nu, ~/.cargo/bin/nu — while
+# the running binary can be the versioned Cellar file behind that symlink,
+# which stops existing at the next `brew upgrade`.
+export def "ghostty nu-path" []: nothing -> path {
+  which nu | where type == external | get -o 0.path | default $nu.current-exe
+}
+
+# Make Nushell what a new Ghostty window starts, or hand that back to Ghostty.
+export def "ghostty shell" [
+  --reset  # drop our `command`, so Ghostty falls back to SHELL / passwd again
+]: nothing -> nothing {
+  if $reset {
+    ghostty set { command: null }
+  } else {
+    ghostty set { command: (ghostty nu-path) }
+  }
+  let now = (live "command")
+  print (if $now == null {
+    "Ghostty is not installed; the setting is written for when it is"
+  } else {
+    $"new Ghostty windows start ($now)"
+  })
 }
 
 # ── internals ─────────────────────────────────────────────────────────────────
@@ -206,13 +251,16 @@ def validate []: nothing -> record<ok: bool, err: string> {
   { ok: ($r.exit_code == 0), err: ([$r.stdout $r.stderr] | str join | str trim | lines | uniq | str join (char nl)) }
 }
 
-# What Ghostty itself reports, which is how we know we wrote to the file it
-# actually reads. Null when Ghostty is not installed or sets no theme.
-def live-theme []: nothing -> any {
+# What Ghostty itself reports for one key, which is how we know we wrote to the
+# file it actually reads. Null when Ghostty is not installed or the key is
+# unset — `+show-config` prints only keys that resolved to a value.
+def live [key: string]: nothing -> any {
   let g = (ghostty-bin)
   if $g == null { return null }
   ^$g +show-config
   | lines
-  | parse -r '^theme\s*=\s*(?<t>.+)$'
-  | get -o 0.t
+  # Concatenated, not interpolated: in a `$'…'` string `\(` does not escape
+  # the paren the regex group needs.
+  | parse -r ('^' + $key + '\s*=\s*(?<v>.+)$')
+  | get -o 0.v
 }

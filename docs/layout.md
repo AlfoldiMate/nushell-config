@@ -158,7 +158,7 @@ editing it is the whole override mechanism.
 |---|---|
 | 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
 | 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
-| 3. Terminal | is Ghostty installed, are you *running* in it, and the install line if not |
+| 3. Terminal | is Ghostty installed, are you *running* in it, the install line if not — and whether a new window starts Nushell (the one question whose default is yes) |
 | 4. Theme | the Nushell theme, and — when it is `"terminal"` — one of Ghostty's 463, previewed by painting the live terminal |
 | 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
 | 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |

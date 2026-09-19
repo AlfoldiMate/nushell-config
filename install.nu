@@ -170,8 +170,29 @@ def screen-terminal [--ask, --dry-run]: nothing -> record {
       terminal install --yes
     }
   }
+  # Re-read: the install above may just have changed the answer.
+  let installed = (terminal list | get 0.installed)
+  { ghostty: $installed, in_ghostty: ($here != null), shell: (screen-shell --ask=$ask --installed=$installed) }
+}
+
+# What a new Ghostty window starts. Left alone, Ghostty runs SHELL, then the
+# passwd shell — zsh on a stock Mac — so a Nushell distro that has configured
+# the terminal and then leaves it opening zsh has not installed anything. This
+# is why it is the one question here whose default is yes, and why `--defaults`
+# and a `curl … | sh` run do it unasked: it is the distro's own file in
+# Ghostty's config (`ghostty shell --reset` takes it out again), not an override
+# in settings.nu, so the "no overrides" test the other screens live by is not
+# touched. Returns the nu to write, or null when there is nothing to do.
+def screen-shell [--ask, --installed]: nothing -> any {
+  if not $installed { print ""; return null }
+  let now = ((ghostty status).shell | default "your login shell")
+  let want = (ghostty nu-path)
+  print $"  shell      a new window starts ($now)"
+  # `nu` by whichever path: theirs already does the job, so nothing is written.
+  if ($now | path basename | str replace -r '\.exe$' '') == "nu" { print ""; return null }
+  let yes = if $ask { yes-no $"start Nushell instead? \(($want)\)" } else { true }
   print ""
-  { ghostty: ((terminal list | get 0.installed)), in_ghostty: ($here != null) }
+  if $yes { $want } else { null }
 }
 
 # ── 4. Theme ──────────────────────────────────────────────────────────────────
@@ -196,8 +217,8 @@ def screen-theme [--ask]: nothing -> record {
   # Only "terminal" delegates to Ghostty; every other theme carries its own hex.
   mut ghostty_theme = null
   if $nu_theme == "terminal" and (terminal list | get 0.installed) {
-    # Default no, like every other question here: pressing Enter through the
-    # whole installer has to end with nothing written and no override.
+    # Default no, like every question here but the shell: pressing Enter
+    # through the whole installer has to end with no override in settings.nu.
     if (yes-no "pick a Ghostty theme? \(its colours become Nushell's\)" --default-no) {
       $ghostty_theme = (pick-ghostty-theme)
     }
@@ -325,6 +346,7 @@ def plan-lines [plan: record]: nothing -> list<string> {
   ]
   ++ ($settings | each {|l| $"  ($l)" })
   ++ [
+    (if ($plan.shell? | default null) != null { $"Ghostty command = ($plan.shell) — a new window starts Nushell" })
     (if ($plan.ghostty_theme? | default null) != null { $"Ghostty theme = ($plan.ghostty_theme)" })
     (if ($plan.font? | default null) != null { $"Ghostty font-family = ($plan.font)" })
     "generate tool init files, register plugins"
@@ -359,10 +381,11 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> no
   let migrated = (unlink-old-layout $user --dry-run=$dry_run)
   make-user-dir $user (settings-block $plan) --dry-run=$dry_run --fresh=$migrated
 
-  if ($plan.ghostty_theme? | default null) != null or ($plan.font? | default null) != null {
+  if ($plan.shell? | default null) != null or ($plan.ghostty_theme? | default null) != null or ($plan.font? | default null) != null {
     print $"(ansi cyan_bold)Ghostty(ansi reset)"
     let settings = (
       {}
+      | merge (if ($plan.shell? | default null) != null { { command: $plan.shell } } else { {} })
       | merge (if ($plan.ghostty_theme? | default null) != null { { theme: $plan.ghostty_theme } } else { {} })
       | merge (if ($plan.font? | default null) != null { { font-family: $plan.font } } else { {} })
     )
