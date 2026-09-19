@@ -226,8 +226,14 @@ export def loaded-files []: nothing -> table {
 }
 
 # Plugins shipped next to the nu binary, and whether each is registered.
+#
+# `--registry --plugin-config` reads the registry FILE rather than the engine:
+# a plain `plugin list` reports what this process loaded, which is nothing
+# under `nu -n` — the installer's dry run runs there and used to report every
+# plugin as unregistered. The flag needs the path spelled out, because a
+# config-less nu knows $nu.plugin-path but refuses to default to it.
 export def "plugins list" []: nothing -> table<name: string, registered: bool, path: string> {
-  let registered = (do -i { plugin list | get name } | default [])
+  let registered = (do -i { plugin list --registry --plugin-config $nu.plugin-path | get name } | default [])
   ls ($nu.current-exe | path dirname)
   | where name =~ 'nu_plugin_'
   | get name

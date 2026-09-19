@@ -3,9 +3,8 @@
 # all live in YOUR config directory (see docs/layout.md). If any of them turn
 # up in here, the split has come undone — run `nu install.nu`.
 
-# Plugin binaries: per-platform and tied to the nu-plugin protocol version
-plugins/*
-!plugins/.gitkeep
+# Plugin binaries belong in YOUR plugins/ directory, never here: they are
+# per-platform and tied to the nu-plugin protocol version (docs/plugins.md).
 
 .DS_Store
 *.bak

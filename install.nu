@@ -452,7 +452,8 @@ def unlink-old-layout [user: path, --dry-run]: nothing -> bool {
   }
   for d in [autoload vendor .state plugins] {
     let src = ($ROOT | path join $d)
-    # `plugins/` ships a .gitkeep; only move it when it holds something else.
+    # A pre-split checkout ships a plugins/.gitkeep; only move the directory
+    # when it holds something other than that.
     let has = (($src | path exists) and ((try { ls -a $src | where name !~ '\.gitkeep$' } catch { [] }) | is-not-empty))
     if $has {
       print $"  moving ($d)/ out of the checkout"
