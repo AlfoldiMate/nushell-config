@@ -61,7 +61,7 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   the user's. A name holds letters, digits, spaces and `._+/=:,-` only. Never
   name a helper after a built-in (`complete`, `skip`): a file's defs shadow it
   inside every module the file `use`s. Fixtures under `tests/fixtures/`. Run
-  before every commit.
+  before every commit. `tests/pty/` drives Tab in a pseudo-terminal (Python).
 - Comments explain why, and state measured costs (`timeit`,
   `nu-config startup-time`), not estimates.
 - Nushell makes breaking changes at minor versions. `help <cmd>` and

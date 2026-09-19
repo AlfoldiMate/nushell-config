@@ -83,7 +83,10 @@ tests, 2.4 s on the user's build and 2.9 s on the 0.115.1 release
 a `save` that must not run), `specs` (brew against `tests/fixtures/brew`,
 git and cargo against a scratch repository and workspace) and `cost` (the
 numbers above as upper bounds, ten to twenty times the measurement).
-[Tests](../tests.md) is how to add one.
+`nu tests/run.nu pty` drives Tab in a real pseudo-terminal
+(`tests/pty/menu.test.nu`): the menu completing and inserting under the
+shipped defaults, and the partial-completion corruption on nushell main
+asserted per version. [Tests](../tests.md) is how to add one.
 
 ## Limits
 

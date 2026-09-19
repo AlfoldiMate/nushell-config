@@ -74,8 +74,8 @@ nu tests/run.nu completion               # the files or tests named like it
 Each shell a test starts runs against a config directory of its own under
 the run's scratch directory — `settings.nu`, `autoload/`, history, `.state/`
 all there, deleted at the end — so the suite proves the checkout you are in,
-whichever one is live, and leaves yours alone. Run on 2026-09-19: `135 passed,
-0 failed, 0 skipped · 6.7 s`. [Tests](../reference/tests.md) is how to
+whichever one is live, and leaves yours alone. Run on 2026-09-19: `137 passed,
+0 failed, 0 skipped · 18 s`. [Tests](../reference/tests.md) is how to
 write one.
 
 ## What each kind of change needs

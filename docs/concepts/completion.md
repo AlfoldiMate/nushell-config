@@ -222,4 +222,5 @@ What the new inputs bought, and what they did not:
   `SourcedMenu::can_partially_complete` (`crates/nu-cli/src/menus/sourced_menu.rs`)
   letting the inner ColumnarMenu refresh past the wrapper. Reproduced and the
   workaround verified in a pty on 2026-09-19; 0.115.1 is clean, and turning
-  the key back on in `settings.nu` is safe there.
+  the key back on in `settings.nu` is safe there. `tests/pty/menu.test.nu`
+  keeps both facts as a test, asserted per version ([Tests](../reference/tests.md)).

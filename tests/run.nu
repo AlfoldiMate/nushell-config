@@ -19,7 +19,8 @@
 # Files run concurrently (`par-each`), each in a sandbox of its own — HOME
 # and the XDG directories under the run's scratch — so two files cannot see
 # each other's state, and a file's lines print together once it is done.
-# 135 tests: 20 s serial, 7 s concurrent on an M-series Mac (2026-09-19).
+# 137 tests: 38 s serial, 19 s concurrent on an M-series Mac (2026-09-19);
+# the pty file, two terminal sessions, is the long pole.
 # Budget: the whole suite under 30 s, so it is run before every commit.
 
 const ROOT = path self | path dirname | path dirname
