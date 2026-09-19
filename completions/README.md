@@ -212,12 +212,21 @@ registry index.
 
 ## Wiring it in
 
-Add one line to `conf/completions.nu`, next to the others, with a comment
-naming what completes:
+Where the line goes depends on whose module it is. Both directories are on
+`NU_LIB_DIRS`, the user's first.
+
+| The module is | It lives in | The `use` line goes in |
+|---|---|---|
+| shipped by the distro | `completions/` here | `conf/completions.nu`, next to the others, with a comment naming what completes |
+| yours, or fetched (`nu-config fetch completion docker`) | `completions/` in your config dir | your own `settings.nu` |
 
 ```nu
 use <tool>.nu *   # subcommands, flags, <the positionals that matter>
 ```
+
+Nothing a user owns is written inside this checkout, so a module you did not
+write goes in the second row even when you wrote it for a tool the distro
+knows about; your `completions/` shadows this one by name.
 
 `use` is parse-time, so it cannot sit inside `if (which <tool> | is-not-empty)`.
 That is fine: an extern for a tool that is not installed only ever affects
@@ -229,7 +238,7 @@ A completer that errors is **silent** — Nushell just shows files — so none o
 this is optional, and "it looks right" is not evidence.
 
 ```nu
-nu-check config.nu                                              # parses
+nu -l -c 'nu-check distro.nu'                                   # parses, following every source
 nu -l -c 'nu-config doctor'                                     # loads for real
 nu -l -c '"<tool> " | commandline complete --detailed | first 5'
 nu -l -c '"<tool> sub " | commandline complete --detailed | select value description'
