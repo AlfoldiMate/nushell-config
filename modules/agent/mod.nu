@@ -166,17 +166,22 @@ def fold-line [acc: record, line: string, quiet: bool]: nothing -> record {
       }
     }
     "assistant" => {
-      for b in ($ev | get -o message.content | default []) {
-        # StructuredOutput is how --json-schema answers come back, not a tool the user cares about.
+      # StructuredOutput is how --json-schema answers come back, not a tool the
+      # user cares about: neither its call nor its rejection ("Output does not
+      # match required schema", after which the model simply answers again —
+      # seen on 2 of 3 `agent exec` runs, 2026-09-19) is shown.
+      let blocks = ($ev | get -o message.content | default [])
+      for b in $blocks {
         if ($b | get -o type) == "tool_use" and $b.name != "StructuredOutput" {
           print $"(ansi dark_gray)  ⟶ (tool-label $b.name)  (compact-input ($b | get -o input | default {}))(ansi reset)"
         }
       }
-      $acc
+      let structured = ($blocks | where {|b| ($b | get -o type) == "tool_use" and $b.name == "StructuredOutput" } | get -o id | default [])
+      $acc | update structured ($acc.structured ++ $structured)
     }
     "user" => {
       for b in ($ev | get -o message.content | default []) {
-        if ($b | describe -d).type == "record" and ($b | get -o type) == "tool_result" and ($b | get -o is_error | default false) {
+        if ($b | describe -d).type == "record" and ($b | get -o type) == "tool_result" and ($b | get -o is_error | default false) and ($b | get -o tool_use_id) not-in $acc.structured {
           print $"(ansi yellow)  ✗ (compact-input ($b | get -o content | default ''))(ansi reset)"
         }
       }
@@ -229,7 +234,7 @@ def turn [
   let acc = (try {
     do { cd $cwd; $prompt | ^$bin ...$argv }
     | lines
-    | reduce -f {result: null, text: false, printed: false} {|line, acc| fold-line $acc $line $quiet }
+    | reduce -f {result: null, text: false, printed: false, structured: []} {|line, acc| fold-line $acc $line $quiet }
   } catch {|e|
     {result: null, text: false, printed: false, error: $e.msg}
   })
