@@ -13,7 +13,9 @@ export const ROOT = path self | path dirname | path dirname
 # a crashed run says which test it was.
 export def scratch []: nothing -> string {
   let root = $env.TEST_SCRATCH? | default $nu.temp-dir
-  let stem = $env.TEST_NAME? | default "test" | str replace -a " " "-"
+  # Letters, digits, `._-` only: a comma or a bracket from a test name would
+  # break a `glob` over the directory.
+  let stem = $env.TEST_NAME? | default "test" | str replace -ra '[^A-Za-z0-9._-]+' '-' 
   mktemp -d --tmpdir-path $root $"($stem).XXXXXX"
 }
 

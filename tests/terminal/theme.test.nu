@@ -78,7 +78,11 @@ def "test an unknown name is an error before anything is written" [] {
   let fake = fake-ghostty
   let err = try { theme resolve "No Such Theme"; null } catch {|e| $e.msg }
   assert ($err | str contains "no theme called 'No Such Theme'") $err
-  assert not (theme state-dir | path join theme.nuon | path exists)
+  let used = try { theme use "No Such Theme" --no-icon; null } catch {|e| $e.msg }
+  assert ($used | str contains "no theme called") $used
+  assert equal (ghostty settings) {} "nothing reached Ghostty"
+  assert equal (ghostty-calls $fake | where {|c| $c.0 == "+validate-config" }) []
+  assert (((theme current | default {}) | get -o name) != "No Such Theme")
 }
 
 def "test roles is a table of role, value and the tier that decided it" [] {

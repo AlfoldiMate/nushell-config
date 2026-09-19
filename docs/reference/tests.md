@@ -10,6 +10,7 @@ nu tests/run.nu                 # everything
 nu tests/run.nu completion      # only files or tests whose name contains it
 nu tests/run.nu --timing        # ... and the ten slowest at the end
 nu tests/run.nu -v              # every file's output, not only a failing one's
+nu tests/run.nu --serial        # one file at a time, in order
 ```
 
 One line per test, a summary, exit 1 when anything failed:
@@ -34,6 +35,7 @@ tests/
   harness.test.nu     the harness tested with itself
   completion/         engine, smart, specs, cost — the engine behind Tab
   terminal/           ghostty, theme, font — against a fake ghostty
+  config/             layering, modules, upgrade, install, tools — the distro's own mechanics
   <concern>.test.nu   one file per module or concern
   fixtures/           brew/ (a trimmed zsh completion, name lists, a Cellar),
                       ghostty/ (the fake, three theme files); the runner's own
@@ -73,13 +75,18 @@ Each **file** runs in a fresh `nu -n` with `NU_LIB_DIRS` set to `modules/`,
 `completions/`, `themes/` and then `tests/` of the checkout (last, so that
 `tests/terminal/` does not shadow the module), so `use lib.nu *`,
 `use nu-complete` and `use git.nu *` resolve the way they do in a shell, and
-nothing the user's config sets is present: the child's `XDG_CONFIG_HOME`,
-`XDG_DATA_HOME` and `XDG_CACHE_HOME` point under the run's scratch directory,
-so `$nu.cache-dir` (where `completions/brew.nu` writes its spec) is the
-run's own, and so does `HOME` off Windows (where `$nu.home-dir` does not
-follow it), so `~/Library/Fonts` and `~/Library/Application Support` are
-scratch too; rustup's `CARGO_HOME`/`RUSTUP_HOME` are passed through so the
-real cargo still runs. Tests within a file share that process; state a test wants alone
+nothing the user's config sets is present: the file's shells get
+`XDG_CONFIG_HOME`, `XDG_DATA_HOME` and `XDG_CACHE_HOME` under a sandbox of
+the file's own in the run's scratch directory, so `$nu.cache-dir` (where
+`completions/brew.nu` writes its spec) and `$nu.data-dir` (the theme's
+state) are that file's alone, and so is `HOME` off Windows (where
+`$nu.home-dir` does not follow it), so `~/Library/Fonts` and
+`~/Library/Application Support` are scratch too; rustup's
+`CARGO_HOME`/`RUSTUP_HOME` are passed through so the real cargo still runs.
+Files run **concurrently** (`par-each`), which the sandboxes make safe, and
+a file's lines are printed together once it is done; `--serial` runs them
+one at a time in order. Tests within a file share a process and a sandbox,
+so a test must not assume a file it did not write is absent. Tests within a file share that process; state a test wants alone
 goes in a `scratch` directory.
 
 **Never name a helper after a built-in.** A file's `def`s are declared before
@@ -120,10 +127,14 @@ A file costs two `nu -n` starts (one lists the tests, one runs them) and a
 test that starts a shell against a user directory costs one `nu -l`: about
 60 ms with the distro loaded, 105 ms on the 0.115.1 release build
 (2026-09-19, M-series Mac). The harness file alone, six tests, four of them
-starting a shell: 332 ms; with the completion tests, 60 tests in 2.4 s
-(2.9 s on 0.115.1; 0.55 s for the harness alone on the Linux runner, 1.4 s
-on the macOS one). The whole suite is budgeted under 30 s so it is run
-before every commit; `--timing` names what to look at when it is not.
+starting a shell: 332 ms. The whole suite, 135 tests in thirteen files:
+6.7 s concurrent, 20 s `--serial`, 8.1 s concurrent on 0.115.1 (0.55 s for
+the harness alone on the Linux runner, 1.4 s on the macOS one). The slow
+tests are the ones that clone this repository three times (`config/upgrade`,
+0.5-0.8 s each), run the installer (`config/install`, 0.5-1 s) or decode the
+icon's PNG in Python (1.3 s). The whole suite is budgeted under 30 s so it
+is run before every commit; `--timing` names what to look at when it is
+not.
 
 ## CI
 

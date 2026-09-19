@@ -145,6 +145,24 @@ load.nu      `use nu-config`
 meta.nuon    description
 ```
 
+## Tests
+
+`nu tests/run.nu config` — 45 tests in `tests/config/` (2026-09-19):
+`layering` (a `const` and an `$env.` leaf in `settings.nu` reaching the
+`conf/` file that reads them, `knobs` against `defaults.nu` and every
+`meta.nuon`, `--overridden` naming exactly the live lines, the rule that no
+`conf/` file assigns a knob `defaults.nu` owns, what startup parses and
+what it leaves to the lazy hook, the hook's trigger words), `modules`
+(`list | info | check | lint | enable | disable` against a user directory
+with a module that keeps the contract and one that breaks it every way
+`lint` knows), `upgrade` (`check | status | notice | stale | upgrade`
+against a bare clone of this repository as the remote, commits pushed from
+a third clone, a checkout with commits of its own, no remote, a fetch that
+fails), `install` (`--dry-run` writing nothing, `--defaults` writing exactly
+the scaffold with no override, a second run, a foreign `config.nu` backed
+up, a checkout refused) and `tools` (`setup | status | remove`, the files
+parsing, the carapace rewrap). [Tests](../tests.md) is the harness.
+
 ## Limits
 
 `doctor`'s parse check runs `nu-check` on `distro.nu`, which follows every
