@@ -197,6 +197,23 @@ nu-config edit user         # your settings.nu
 checkout is still doubling as the config directory — run `nu install.nu`) or
 `other` (something else is live).
 
+## Updating
+
+```nu
+nu-config upgrade            # git pull --ff-only in the checkout, and what came in
+nu-config upgrade check      # fetch now and say where the checkout stands
+nu-config upgrade status     # the last check's result, no network
+```
+
+You do not have to remember to: once every `UPDATE_CHECK_EVERY` (a day) an
+interactive shell spawns a background job that fetches, and the next start
+prints one line when the checkout is behind. The fetch is never on the startup
+path — a start reads the last result out of `<your>/.state/nu-config/
+upgrade.nuon` (0.3 ms) — and the line is keyed to the HEAD the check saw, so it
+disappears as soon as HEAD moves, by `nu-config upgrade` or by hand. `nu -c` and
+scripts neither print nor spawn anything. `conf/update.nu` is the wiring,
+`modules/nu-config/upstream.nu` the commands.
+
 ## Verifying a change to the distro
 
 ```nu

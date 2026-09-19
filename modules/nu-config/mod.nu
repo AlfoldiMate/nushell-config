@@ -6,6 +6,7 @@
 #   nu-config plugins add         register the plugins shipped next to `nu`
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
 #   nu-config startup-time        time cold starts
+#   nu-config upgrade             pull the distro; `upgrade check | status` around it
 #   nu-config edit                open the distro in $EDITOR
 #   nu-config edit user           open your own settings.nu
 #
@@ -13,6 +14,8 @@
 
 # Tool init files: `nu-config tools setup | status | remove | dir`
 export use tools.nu *
+# Is the checkout behind its remote: `nu-config upgrade | check | status`
+export use upstream.nu *
 # Completion caches, for `doctor`.
 use nu-complete *
 
@@ -83,7 +86,9 @@ export def doctor []: nothing -> nothing {
   let inst = (install-status)
 
   print $"(ansi cyan_bold)Nushell(ansi reset) ((version).version)  ($nu.current-exe)"
-  print $"(ansi cyan_bold)Distro(ansi reset)  ($inst.distro)"
+  let up = (upgrade status)
+  let behind = (if $up.error == null and $up.behind > 0 { $"  (ansi yellow)($up.behind) behind ($up.upstream) — nu-config upgrade(ansi reset)" } else { "" })
+  print $"(ansi cyan_bold)Distro(ansi reset)  ($inst.distro)($behind)"
   print $"(ansi cyan_bold)Yours(ansi reset)   ($inst.user)"
   let mark = (match $inst.state { "split" => $ok, _ => $"(ansi yellow)??(ansi reset)" })
   print $"(ansi cyan_bold)Layout(ansi reset)  ($mark) ($inst.state)"

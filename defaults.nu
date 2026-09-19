@@ -166,3 +166,10 @@ const MODULES_LAZY = [terminal agent odata]
 # of its commands start with `theme`, `ghostty` or `font`, which is also why
 # typing `ghostty +list-themes` loads it.
 const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty font] }
+
+# ── Updates ───────────────────────────────────────────────────────────────────
+# How often an interactive shell checks whether the distro checkout is behind
+# its remote. The check is a background `git fetch`, never on the startup
+# path: a start reads the LAST result and prints one line when there is
+# something to pull — `nu-config upgrade` pulls it. 0sec: never check.
+const UPDATE_CHECK_EVERY = 1day

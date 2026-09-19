@@ -266,6 +266,7 @@ yourself goes.
 
 ```nu
 nu-config doctor           # both roots, layout, paths, parse check, tools, plugins, startup time
+nu-config upgrade           # pull the distro; a shell tells you when there is something to pull
 nu-config knobs            # every knob, and whether you have overridden it
 nu-config module list      # enabled, eager or lazy, measured cost, dependencies
 nu-config tools status     # installed vs generated
@@ -287,6 +288,22 @@ nu -n -c '<snippet>'             # isolated snippet, no config
 ```
 
 `nu -c '...'` and `nu script.nu` deliberately load no user config at all.
+
+### Updates
+
+Once a day an interactive shell runs `git fetch` in the checkout as a
+background job — never on the startup path — and the next shell to start prints
+one line if there is something to pull:
+
+```
+distro: 2 commits behind origin/main · A new Ghostty window starts Nushell — nu-config upgrade
+```
+
+`nu-config upgrade` is `git pull --ff-only` plus that report; `nu-config upgrade
+check` fetches now; `nu-config upgrade status` shows the last result. The line
+goes away the moment HEAD moves, however it moved. `const UPDATE_CHECK_EVERY =
+0sec` in your `settings.nu` turns the check off. Reading the last result costs
+0.3 ms at startup.
 
 ## How Nushell finds this distro
 
