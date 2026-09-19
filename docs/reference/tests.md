@@ -33,9 +33,11 @@ tests/
   lib.nu              what a test needs: scratch, user-dir, nu-l, skip-test
   harness.test.nu     the harness tested with itself
   completion/         engine, smart, specs, cost — the engine behind Tab
+  terminal/           ghostty, theme, font — against a fake ghostty
   <concern>.test.nu   one file per module or concern
-  fixtures/           brew/ (a trimmed zsh completion, name lists, a Cellar);
-                      the runner's own sample files — never searched for tests
+  fixtures/           brew/ (a trimmed zsh completion, name lists, a Cellar),
+                      ghostty/ (the fake, three theme files); the runner's own
+                      sample files — never searched for tests
 ```
 
 ## A test file
@@ -67,13 +69,17 @@ name held in a variable — and a quote in one would open a string there and
 pair with the next, silently swallowing the tests in between; a name outside
 the set fails the file with the reason.
 
-Each **file** runs in a fresh `nu -n` with `NU_LIB_DIRS` set to `tests/`,
-`modules/`, `completions/` and `themes/` of the checkout, so `use lib.nu *`,
+Each **file** runs in a fresh `nu -n` with `NU_LIB_DIRS` set to `modules/`,
+`completions/`, `themes/` and then `tests/` of the checkout (last, so that
+`tests/terminal/` does not shadow the module), so `use lib.nu *`,
 `use nu-complete` and `use git.nu *` resolve the way they do in a shell, and
 nothing the user's config sets is present: the child's `XDG_CONFIG_HOME`,
 `XDG_DATA_HOME` and `XDG_CACHE_HOME` point under the run's scratch directory,
 so `$nu.cache-dir` (where `completions/brew.nu` writes its spec) is the
-run's own. Tests within a file share that process; state a test wants alone
+run's own, and so does `HOME` off Windows (where `$nu.home-dir` does not
+follow it), so `~/Library/Fonts` and `~/Library/Application Support` are
+scratch too; rustup's `CARGO_HOME`/`RUSTUP_HOME` are passed through so the
+real cargo still runs. Tests within a file share that process; state a test wants alone
 goes in a `scratch` directory.
 
 **Never name a helper after a built-in.** A file's `def`s are declared before
@@ -97,6 +103,7 @@ the file's output, shown after a failing file or with `-v`.
 | `scratch` | a fresh directory under the run's scratch root, named after the test; deleted with the run |
 | `user-dir [--settings <body>]` | a user directory: `config.nu` sourcing this checkout's `distro.nu`, a `settings.nu` if given, and an `XDG_CONFIG_HOME` / `XDG_DATA_HOME` of its own. Returns `{root, config, data, env}` |
 | `nu-l <dir> <code>` | `nu -l -c <code>` under that directory's environment; returns `complete`'s `{stdout, stderr, exit_code}` |
+| `fake-ghostty` | a `ghostty` that answers from files, first on PATH, with a Ghostty config directory of its own; returns `{root, bin, log, config, themes}`. Skips the test on Windows. `ghostty-calls <fake>` lists what it was asked |
 | `skip-test <reason>` | stop the test, counted apart from the failures. Not `skip`: a module `use`d after `lib.nu` resolves names against the scope it is parsed in, and the engine's `skip $n` became the test helper |
 
 `user-dir` sets the XDG variables rather than passing `--config`: Nushell

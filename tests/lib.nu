@@ -51,6 +51,50 @@ export def nu-l [dir: record, code: string]: nothing -> record {
   with-env $dir.env { ^$nu.current-exe -l -c $code | complete }
 }
 
+# A ghostty that answers from files (tests/fixtures/ghostty/fake.nu), first
+# on PATH for the rest of the test, with a Ghostty config directory of its own
+# (XDG_CONFIG_HOME) so `ghostty set` writes there. The fake osascript beside
+# it answers `ghostty reload` and hands `-l JavaScript` (the icon rasterizer)
+# to the real one. Returns where things are; `log` holds every call.
+export def --env fake-ghostty []: nothing -> record {
+  if $nu.os-info.name == "windows" { skip-test "no Ghostty on Windows" }
+  let root = scratch
+  let bin = $root | path join bin
+  let fixtures = $ROOT | path join tests fixtures ghostty
+  mkdir $bin ($root | path join share ghostty) ($root | path join config ghostty) ($root | path join config nushell)
+  # The fake is a nu script: without this Nushell warns that the directory is empty.
+  "# placeholder\n" | save ($root | path join config nushell config.nu)
+  cp -r ($fixtures | path join themes) ($root | path join share ghostty)
+  let fake = $fixtures | path join fake.nu
+  $"#!/bin/sh
+exec ($nu.current-exe | to nuon) ($fake | to nuon) "$@"
+" | save ($bin | path join ghostty)
+  $"#!/bin/sh
+if [ "$1" = -l ]; then exec /usr/bin/osascript "$@"; fi
+exec ($nu.current-exe | to nuon) ($fake | to nuon) osascript "$@"
+" | save ($bin | path join osascript)
+  ^chmod +x ($bin | path join ghostty) ($bin | path join osascript)
+  $env.PATH = ($env.PATH | prepend $bin)
+  $env.GHOSTTY_FAKE = $root
+  $env.XDG_CONFIG_HOME = ($root | path join config)
+  # On macOS the module also reads ~/Library/Application Support, which is
+  # the run's fake home: a test that wrote there must not leak into the next.
+  let as = $nu.home-dir | path join Library "Application Support" com.mitchellh.ghostty
+  if ($nu.home-dir | str starts-with ($env.TEST_SCRATCH? | default "/nowhere")) and ($as | path exists) { rm -rf $as }
+  {
+    root: $root
+    bin: $bin
+    log: ($root | path join log)
+    config: ($root | path join config ghostty)
+    themes: ($root | path join share ghostty themes)
+  }
+}
+
+# The calls the fake ghostty has answered so far, as argument lists.
+export def ghostty-calls [fake: record]: nothing -> list<list<string>> {
+  if ($fake.log | path exists) { open --raw $fake.log | lines | each {|l| $l | from nuon } } else { [] }
+}
+
 # Stop this test with a reason instead of a verdict; run.nu counts it apart
 # from the failures. For a test that only makes sense with a tool installed
 # or on one platform, which says so rather than passing vacuously. Not

@@ -7,8 +7,8 @@
 #
 # A test file is tests/**/*.test.nu (fixtures/ excluded); a test is a
 # `def "test <name>"` in it. Each FILE runs in a fresh `nu -n` with
-# NU_LIB_DIRS pointing at this checkout — tests/ for lib.nu, then modules/,
-# completions/ and themes/ — so a test sees the shipped modules the way a
+# NU_LIB_DIRS pointing at this checkout — modules/, completions/, themes/,
+# then tests/ for lib.nu — so a test sees the shipped modules the way a
 # shell does and nothing the user's config sets. The tests are listed with
 # `scope commands` after the file is sourced, so a test is whatever parses as
 # one, and each runs inside a `try`: `std assert` makes the failure,
@@ -19,11 +19,13 @@
 
 const ROOT = path self | path dirname | path dirname
 const TESTS = $ROOT | path join tests
+# tests/ last: a directory of tests named after a module (tests/terminal/)
+# would otherwise shadow the module for `use terminal *`.
 const LIB_DIRS = [
-  ($ROOT | path join tests)
   ($ROOT | path join modules)
   ($ROOT | path join completions)
   ($ROOT | path join themes)
+  ($ROOT | path join tests)
 ]
 
 def main [
@@ -44,12 +46,21 @@ def main [
   # `nu -n` reads nothing there, so a placeholder keeps the output clean.
   mkdir ($scratch | path join xdg config nushell) ($scratch | path join xdg data) ($scratch | path join xdg cache)
   "# nu -n reads no config; this keeps Nushell from warning that the directory is empty\n" | save ($scratch | path join xdg config nushell config.nu)
+  # HOME too, off Windows (where $nu.home-dir does not follow it): on macOS
+  # the terminal module reads ~/Library/Application Support and writes
+  # ~/Library/Fonts, and a test must never find the user's own.
+  mkdir ($scratch | path join home)
   let child_env = {
     TEST_SCRATCH: $scratch
     XDG_CONFIG_HOME: ($scratch | path join xdg config)
     XDG_DATA_HOME: ($scratch | path join xdg data)
     XDG_CACHE_HOME: ($scratch | path join xdg cache)
-  }
+  } | merge (if $nu.os-info.name == "windows" { {} } else { { HOME: ($scratch | path join home) } })
+  # rustup's cargo is a proxy that finds the toolchain through the home
+  # directory; the real one stays reachable so a cargo test is not skipped.
+  | merge ({ CARGO_HOME: ($nu.home-dir | path join .cargo), RUSTUP_HOME: ($nu.home-dir | path join .rustup) }
+      | transpose k v | where {|r| ($env | get -o $r.k) == null and ($r.v | path exists) }
+      | reduce -f {} {|r, acc| $acc | insert $r.k $r.v })
   let started = date now
 
   let results = $files

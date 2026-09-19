@@ -61,7 +61,10 @@ Theme names are Tab-completable everywhere they are taken.
 
 ## Configuration
 
-No knobs. The one piece of state is what `theme use` renders into `<your
+One knob, `NERD_FONTS_RELEASE`: where `font install --archive` takes the
+archives from — the Nerd Fonts release by default, a mirror's URL, or a
+directory that already holds the assets (an offline machine; the tests).
+The one piece of state is what `theme use` renders into `<your
 dir>/.state/theme/` — `theme.nuon`, `starship.toml`, `ls_colors`, a Ghostty
 theme file and an icon per palette used — which `conf/theme.nu`, `conf/prompt.nu`
 and Ghostty read; `theme status` shows it.
@@ -151,10 +154,32 @@ detect.nu    the terminal registry: installed, running, how to get one
 - `font install` without Homebrew downloads the whole release archive and throws
   most of it away, because a GitHub release asset cannot be extracted in part.
   Iosevka is 402 MB and Noto is 620 MB for four files.
+- `font install` and `font use` of a font that is not installed ask before
+  downloading, so headless (a script, `nu -c`) they refuse and say to pass
+  `--yes` to `font install`.
 - The Windows branch of `font install` — the per-file `HKCU\...\Fonts` registry
   value a user-installed font needs — is written from the documented behaviour
   and has not been run.
-- Untested on Linux and Windows. The config candidates and the resources
-  directory are derived per platform but only the macOS paths have been run.
+- Untested on Linux and Windows by hand. The config candidates and the
+  resources directory are derived per platform; the tests below run the XDG
+  paths on the Linux runner, and the Application Support path on macOS.
+
+## Tests
+
+`nu tests/run.nu terminal` — 38 tests in `tests/terminal/` (8.0 s on an
+M-series Mac, 2026-09-19) against a fake `ghostty` (`tests/fixtures/ghostty/fake.nu`,
+put first on PATH by `fake-ghostty` in `tests/lib.nu`) that answers
+`+show-config` from the config chain the way Ghostty settles it,
+`+show-face` from a list of families, `+validate-config` from the themes it
+"ships" and `+list-themes` from the same, and logs every call; a fake
+`osascript` beside it answers `ghostty reload` and passes the icon
+rasterizer through to the real one. HOME and XDG_CONFIG_HOME are the run's
+own, so `ghostty set` and `font install` write into a scratch directory.
+`ghostty` covers the config path precedence, `set`/`reset`/`live`/`shell`/
+`reload`; `theme` the three tiers, Ghostty theme files both ways, `theme
+use`/`sync` end to end and the icon's pixels (macOS); `font` the `+show-face`
+argument order, the registry, an install from a fixture archive with the
+temporary directory checked gone, and `font use`. Nothing here needs a
+Ghostty installed. [Tests](../tests.md) is the harness.
   That includes `ghostty shell`: whether Ghostty on Linux starts a bare
   `command` as a login shell has not been checked, only that it starts it.

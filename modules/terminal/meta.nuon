@@ -22,5 +22,7 @@
       }
     }
   ]
-  knobs: {}
+  knobs: {
+    NERD_FONTS_RELEASE: { default: "https://github.com/ryanoasis/nerd-fonts/releases/latest/download", about: "where `font install --archive` fetches from: a mirror's URL, or a directory holding the assets" }
+  }
 }

@@ -23,8 +23,10 @@ export use palette.nu *
 export use detect.nu *
 export use font.nu *
 
-# Nothing to wire: no hooks, no completion providers, no knobs. The contract
-# (docs/concepts/modules.md) wants an `activate` and this is the honest one — both files
-# read Ghostty's own configuration at the moment you ask, so there is no state
-# to set up and nothing for the user's settings.nu to have to win against.
-export def "terminal activate" []: nothing -> nothing { }
+# One knob and nothing else to wire: no hooks, no completion providers. Both
+# files read Ghostty's own configuration at the moment you ask, so there is no
+# state to set up. `default`, never assignment: the user's settings.nu was
+# sourced long before this ran (docs/concepts/modules.md).
+export def --env "terminal activate" []: nothing -> nothing {
+  $env.NERD_FONTS_RELEASE = ($env.NERD_FONTS_RELEASE? | default "https://github.com/ryanoasis/nerd-fonts/releases/latest/download")
+}

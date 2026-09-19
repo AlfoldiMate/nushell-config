@@ -72,6 +72,13 @@ def registry []: nothing -> table {
 
 const NERD_FONTS_RELEASE = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download"
 
+# Where the archives come from: the release, or NERD_FONTS_RELEASE in the
+# environment — a mirror's URL, or a directory holding the assets for a
+# machine without GitHub (and for the tests, which install from a fixture).
+def release-source []: nothing -> string {
+  $env.NERD_FONTS_RELEASE? | default $NERD_FONTS_RELEASE
+}
+
 # The four faces a terminal needs. Everything else in the archive — Mono, Propo,
 # NL, the other weights — is left there, which is why one font is a few MB
 # installed out of an archive that can be a few hundred.
@@ -172,6 +179,9 @@ export def "font install" [
   let brew = ($nu.os-info.name == "macos" and (which brew | is-not-empty) and not $archive)
   let how = if $brew { $"brew install --cask ($f.cask)" } else { $"download ($f.asset) from the Nerd Fonts release into (font dir)" }
   if not $yes {
+    if not ((is-terminal --stdin) and (is-terminal --stdout)) {
+      error make { msg: $"($name) is not installed, and there is no terminal to ask on — `font install ($name) --yes`" }
+    }
     if ([$how "no"] | input list $"install ($name)?") != $how { print "left alone"; return }
   }
   if $brew {
@@ -197,13 +207,19 @@ def install-from-archive [f: record]: nothing -> nothing {
   # .zip on macOS and Windows, whose `tar` is libarchive/bsdtar and reads zip;
   # .tar.xz on Linux, whose GNU tar does not.
   let ext = if $nu.os-info.name == "linux" { "tar.xz" } else { "zip" }
-  let url = $"($NERD_FONTS_RELEASE)/($f.asset).($ext)"
+  let source = (release-source)
+  let url = $"($source)/($f.asset).($ext)"
   let tmp = (mktemp -d -t nerd-font-XXXXXX)
   let archive = ($tmp | path join $"($f.asset).($ext)")
   try {
-    print $"  downloading ($url)"
-    # Streams to disk rather than through a variable: these archives are large.
-    http get $url | save -f $archive
+    if ($source | str starts-with "http") {
+      print $"  downloading ($url)"
+      # Streams to disk rather than through a variable: these archives are large.
+      http get $url | save -f $archive
+    } else {
+      print $"  copying ($url)"
+      cp $url $archive
+    }
     print $"  unpacking ((ls $archive | get 0.size))"
     ^tar -xf $archive -C $tmp
     let dest = (font dir)
