@@ -8,10 +8,14 @@
 # spellings), so the prompt follows the terminal's sixteen colours from the
 # first start.
 #
-# The colours in the styles are ROLES — red, orange, yellow, green, teal,
-# accent_alt, on_accent — plus the sixteen by name; docs/concepts/theming.md lists them
-# all. A theme that ships a peach gets a peach for `orange` and one that does
-# not gets a blend of its red and yellow. Never write a hex here.
+# The colours in the styles are ROLES — tint_red, tint_orange, tint_yellow,
+# tint_green, tint_teal, tint_accent_alt with on_tint written on them, text_*
+# for the symbols — plus the sixteen by name; docs/concepts/theming.md lists
+# them all. A theme that ships a peach gets a peach for `orange` and one that
+# does not gets a blend of its red and yellow. The tints are the hues
+# themselves on a dark theme and pastels of them on a light one, where a
+# saturated bar with light text on it was the loudest thing on the screen.
+# Never write a hex here.
 #
 # To change the prompt, copy this file to <your dir>/themes/starship.toml and
 # `theme sync`: yours is rendered instead. Keep `palette = 'distro'` and stick
@@ -20,15 +24,15 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-[](red)\
+[](tint_red)\
 $os\
 $username\
-[](bg:orange fg:red)\
+[](bg:tint_orange fg:tint_red)\
 $directory\
-[](bg:yellow fg:orange)\
+[](bg:tint_yellow fg:tint_orange)\
 $git_branch\
 $git_status\
-[](fg:yellow bg:green)\
+[](fg:tint_yellow bg:tint_green)\
 $c\
 $rust\
 $golang\
@@ -38,11 +42,11 @@ $java\
 $kotlin\
 $haskell\
 $python\
-[](fg:green bg:teal)\
+[](fg:tint_green bg:tint_teal)\
 $conda\
-[](fg:teal bg:accent_alt)\
+[](fg:tint_teal bg:tint_accent_alt)\
 $time\
-[ ](fg:accent_alt)\
+[ ](fg:tint_accent_alt)\
 $cmd_duration\
 $line_break$character"""
 
@@ -50,7 +54,7 @@ palette = 'distro'
 
 [os]
 disabled = false
-style = "bg:red fg:on_accent"
+style = "bg:tint_red fg:on_tint"
 
 [os.symbols]
 Windows = ""
@@ -76,12 +80,12 @@ RedHatEnterprise = "󱄛"
 
 [username]
 show_always = true
-style_user = "bg:red fg:on_accent"
-style_root = "bg:red fg:on_accent"
+style_user = "bg:tint_red fg:on_tint"
+style_root = "bg:tint_red fg:on_tint"
 format = '[ $user]($style)'
 
 [directory]
-style = "bg:orange fg:on_accent"
+style = "bg:tint_orange fg:on_tint"
 format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = "…/"
@@ -95,91 +99,91 @@ truncation_symbol = "…/"
 
 [git_branch]
 symbol = ""
-style = "bg:yellow"
-format = '[[ $symbol $branch ](fg:on_accent bg:yellow)]($style)'
+style = "bg:tint_yellow"
+format = '[[ $symbol $branch ](fg:on_tint bg:tint_yellow)]($style)'
 
 [git_status]
-style = "bg:yellow"
-format = '[[($all_status$ahead_behind )](fg:on_accent bg:yellow)]($style)'
+style = "bg:tint_yellow"
+format = '[[($all_status$ahead_behind )](fg:on_tint bg:tint_yellow)]($style)'
 
 [nodejs]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [c]
 symbol = " "
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [rust]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [golang]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [php]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [java]
 symbol = " "
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [kotlin]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [haskell]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version) ](fg:on_tint bg:tint_green)]($style)'
 
 [python]
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:on_accent bg:green)]($style)'
+style = "bg:tint_green"
+format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:on_tint bg:tint_green)]($style)'
 
 [docker_context]
 symbol = ""
-style = "bg:teal"
-format = '[[ $symbol( $context) ](fg:on_accent bg:teal)]($style)'
+style = "bg:tint_teal"
+format = '[[ $symbol( $context) ](fg:on_tint bg:tint_teal)]($style)'
 
 [conda]
 symbol = "  "
-style = "fg:on_accent bg:teal"
+style = "fg:on_tint bg:tint_teal"
 format = '[$symbol$environment ]($style)'
 ignore_base = false
 
 [time]
 disabled = false
 time_format = "%R"
-style = "bg:accent_alt"
-format = '[[  $time ](fg:on_accent bg:accent_alt)]($style)'
+style = "bg:tint_accent_alt"
+format = '[[  $time ](fg:on_tint bg:tint_accent_alt)]($style)'
 
 [line_break]
 disabled = false
 
 [character]
 disabled = false
-success_symbol = '[](bold fg:green)'
-error_symbol = '[](bold fg:red)'
-vimcmd_symbol = '[❮](bold fg:green)'
-vimcmd_replace_one_symbol = '[❮](bold fg:accent_alt)'
-vimcmd_replace_symbol = '[❮](bold fg:accent_alt)'
-vimcmd_visual_symbol = '[❮](bold fg:yellow)'
+success_symbol = '[](bold fg:text_green)'
+error_symbol = '[](bold fg:text_red)'
+vimcmd_symbol = '[❮](bold fg:text_green)'
+vimcmd_replace_one_symbol = '[❮](bold fg:text_accent_alt)'
+vimcmd_replace_symbol = '[❮](bold fg:text_accent_alt)'
+vimcmd_visual_symbol = '[❮](bold fg:text_yellow)'
 
 [cmd_duration]
 show_milliseconds = true
 format = " in $duration "
-style = "bg:accent_alt"
+style = "bg:tint_accent_alt"
 disabled = false
 show_notifications = false
 min_time_to_notify = 45000
@@ -220,3 +224,34 @@ err = "red"
 info = "blue"
 hint = "bright-black"
 on_accent = "black"
+text_red = "red"
+text_green = "green"
+text_yellow = "yellow"
+text_blue = "blue"
+text_magenta = "purple"
+text_cyan = "cyan"
+text_bright_red = "bright-red"
+text_bright_green = "bright-green"
+text_bright_yellow = "bright-yellow"
+text_bright_blue = "bright-blue"
+text_bright_magenta = "bright-purple"
+text_bright_cyan = "bright-cyan"
+text_orange = "yellow"
+text_purple = "purple"
+text_pink = "bright-purple"
+text_teal = "cyan"
+text_accent = "blue"
+text_accent_alt = "purple"
+tint_red = "red"
+tint_green = "green"
+tint_yellow = "yellow"
+tint_blue = "blue"
+tint_magenta = "purple"
+tint_cyan = "cyan"
+tint_orange = "yellow"
+tint_purple = "purple"
+tint_pink = "bright-purple"
+tint_teal = "cyan"
+tint_accent = "blue"
+tint_accent_alt = "purple"
+on_tint = "black"

@@ -107,6 +107,7 @@ Nushell 0.115.1, Ghostty 1.3.1, macOS, 2026-09-18.
 | one swatch | bit shifts rather than splitting the hex into pairs: 95 ms over all 463 against 380 ms |
 | `ghostty +show-config` | 18 ms |
 | `ghostty +show-face` | 26 ms per call; `font list` runs fifteen through `par-each` in 103 ms |
+| a font landing on macOS | `brew install --cask font-hack-nerd-font` returned 1.7 s before Ghostty resolved `Hack Nerd Font` to itself (2026-09-19); `font install` polls `+show-face` every 200 ms, up to 10 s, before it reports — a single check said "not installed" and `font use` refused the font it had just installed |
 | installing Inconsolata from the archive | 8 MB downloaded, two faces (it has no italic) into `~/Library/Fonts` |
 
 ## Files

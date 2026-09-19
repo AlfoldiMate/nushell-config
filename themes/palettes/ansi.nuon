@@ -11,6 +11,10 @@
 # to this one can name them exactly (tier three) — docs/concepts/theming.md.
 #
 # It is also what conf/theme.nu loads when `theme use` has never run.
+#
+# Not listed here: the text_<hue> and tint_<hue> families and on_tint
+# (docs/concepts/theming.md), which palette.nu adds as the hues'' own names in
+# this tier — `text_red` is `red` — and computes from the hexes in the others.
 {
   bat: "ansi"
   roles: {

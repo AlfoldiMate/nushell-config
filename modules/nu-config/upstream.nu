@@ -32,6 +32,21 @@ const ROOT = path self | path dirname | path dirname | path dirname
 
 def distro-root []: nothing -> path { $ROOT | path expand }
 
+# `nu-config user init`, without importing user.nu a second time: scaffold.nu
+# is a script (docs/concepts/layout.md), run in a `nu -n` the way user.nu's
+# scaffold-run does it, and the failure is reported, not raised — an upgrade
+# that pulled is done, whatever the scaffold says.
+def scaffold-init []: nothing -> table<file: string, action: string, note: string> {
+  let script = ($ROOT | path join modules nu-config scaffold.nu)
+  let dir = ($nu.config-path | path dirname | path expand --no-symlink)
+  let r = (^$nu.current-exe -n $script init --dir $dir | complete)
+  if $r.exit_code != 0 {
+    print $"(ansi yellow)scaffold not rendered: ($r.stderr | str trim)(ansi reset) — `nu-config user init`"
+    return []
+  }
+  $r.stdout | from nuon
+}
+
 def state-path []: nothing -> path {
   $nu.data-dir | path join .state nu-config upgrade.nuon
 }
@@ -161,5 +176,14 @@ export def upgrade []: nothing -> nothing {
   }
   print $"updated ((distro-root)) → ($after.upstream)"
   for l in (git-ok [log --format=%s $"($before)..($after.head)"] | default "" | lines) { print $"  ($l)" }
+  # The scaffold the new version ships — a README or an example a release
+  # added — is written where it is missing, the way `edit user` does it; a file
+  # you have is never touched. scaffold.nu runs from the checkout as it is now
+  # on disk, so the templates are the new ones.
+  let written = (scaffold-init | where action != "kept")
+  if ($written | is-not-empty) {
+    print $"scaffold in ((user-root)):"
+    for r in $written { print $"  ($r.action) ($r.file)  ($r.note)" }
+  }
   print $"(ansi dark_gray)a new shell loads it; `nu-config doctor` checks it parsed(ansi reset)"
 }

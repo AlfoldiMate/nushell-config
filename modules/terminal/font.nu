@@ -189,11 +189,25 @@ export def "font install" [
   } else {
     install-from-archive $f
   }
-  if not (installed? $f.family) {
+  if not (settled? $f.family) {
     print $"(ansi yellow)installed, but Ghostty still resolves '($f.family)' to ((font face $f.family)) — the Nerd Fonts naming may have changed(ansi reset)"
   } else {
     print $"($name) installed — Ghostty renders it as '($f.family)'"
   }
+}
+
+# macOS registers a font file some time after it lands: measured 2026-09-19,
+# `brew install --cask font-hack-nerd-font` returned 1.7 s before Ghostty
+# resolved 'Hack Nerd Font' to itself (an uninstall lags the same way). A single
+# check straight after the install therefore said "not installed", and `font
+# use` refused to write the family it had just installed. Poll instead; each
+# try is one Ghostty spawn, ~30 ms.
+def settled? [family: string]: nothing -> bool {
+  for _ in 1..50 {
+    if (installed? $family) { return true }
+    sleep 200ms
+  }
+  false
 }
 
 # Fetch the release archive and take the four faces out of it.

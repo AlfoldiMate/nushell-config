@@ -50,6 +50,15 @@ theme. The four files in `themes/` are templates written against a **role vocabu
 | `black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` and `bright_*` | the sixteen — **always ANSI names, in every tier** |
 | `orange` `purple` `pink` `teal` | hues the sixteen lack |
 | `accent` `accent_alt` `ok` `warn` `err` `info` `hint` `on_accent` | meaning: headers, the prompt's last segment, status, text drawn on a coloured surface |
+| `text_<hue>` for the twelve hues and `orange` `purple` `pink` `teal` `accent` `accent_alt` | a hue **as text on the background**: the hue itself where it reads at 4.5:1 (WCAG AA) — on a dark theme nearly always, so the role keeps the ANSI name — and pulled towards `fg` where it does not. The Nushell theme paints everything you type with these |
+| `tint_<hue>` for the six hues and `orange` `purple` `pink` `teal` `accent` `accent_alt`, and `on_tint` | a hue **as a surface** with `on_tint` written on it: saturated on a dark theme (`on_tint` is `on_accent`), a pastel on a light one (`on_tint` is `fg`), pulled towards the light side until the text reads. The prompt's segments |
+
+The two families exist because a light theme's sixteen are drawn for an
+editor, not for text on their own background: measured over the twenty
+shipped light palettes (2026-09-19), yellow reads at 1.7–3.1:1, bright yellow
+— what every external command you type is painted in — at 1.5–2.1, green and
+cyan at 1.4–3.4. A dark theme's hues read already, and there the families are
+the hues by name, so nothing about a dark theme changed when they arrived.
 
 `modules/terminal/palette.nu` decides what each role is, in three tiers that
 each fill in only what the one before could not say:

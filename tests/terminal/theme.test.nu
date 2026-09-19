@@ -20,6 +20,8 @@ def "test no theme resolves at tier one with every role an ANSI name" [] {
   assert equal ($t | select name by tier palette terminal ghostty bat) { name: null, by: ghostty, tier: ansi, palette: null, terminal: null, ghostty: null, bat: ansi }
   assert ($t.roles | values | all {|v| $v !~ '^#' }) "tier one holds no hex"
   assert ($t.source | values | all {|s| $s == ansi })
+  # The text_ and tint_ families are the hues' own names here.
+  assert equal ($t.roles | select text_yellow text_bright_yellow tint_red tint_orange on_tint) { text_yellow: yellow, text_bright_yellow: light_yellow, tint_red: red, tint_orange: yellow, on_tint: black }
 }
 
 def "test a Ghostty theme with no palette resolves at tier two, shades blended" [] {
@@ -42,6 +44,46 @@ def "test a light theme is told from a dark one" [] {
   let fake = fake-ghostty
   assert equal (theme resolve "Catppuccin Latte" | get dark) false
   assert equal (theme resolve "Catppuccin Macchiato" | get dark) true
+}
+
+# WCAG contrast, for the roles that promise to read.
+def lum [hex: string]: nothing -> float {
+  let n = ($"0x($hex | str substring 1..)" | into int)
+  [($n // 65536) (($n // 256) mod 256) ($n mod 256)]
+  | each {|v| let s = ($v / 255); if $s <= 0.03928 { $s / 12.92 } else { (($s + 0.055) / 1.055) ** 2.4 } }
+  | zip [0.2126 0.7152 0.0722] | each {|p| $p.0 * $p.1 } | math sum
+}
+def contrast [a: string, b: string]: nothing -> float {
+  let l = ([(lum $a) (lum $b)] | sort)
+  ($l.1 + 0.05) / ($l.0 + 0.05)
+}
+
+def "test text_ and tint_ roles read on a light theme and are the hue itself on a dark one" [] {
+  let fake = fake-ghostty
+  let light = theme resolve "Catppuccin Latte"
+  let dark = theme resolve "Catppuccin Macchiato"
+  # Dark: the hues already read, so the roles keep the names the sixteen have.
+  assert equal ($dark.roles | select text_yellow text_bright_yellow text_cyan tint_red tint_yellow) { text_yellow: yellow, text_bright_yellow: light_yellow, text_cyan: cyan, tint_red: red, tint_yellow: yellow }
+  assert equal $dark.roles.on_tint $dark.roles.on_accent "dark text on a saturated segment"
+  # Light: Latte's yellow is 2.3:1 on its base; text_yellow is pulled towards fg until it reads.
+  let bg = $light.roles.bg
+  for role in [text_yellow text_bright_yellow text_green text_cyan text_orange text_pink] {
+    let v = ($light.roles | get $role)
+    assert ($v =~ '^#') $"($role) is a hex on a light theme, got ($v)"
+    assert ((contrast $v $bg) >= 4.5) $"($role) ($v) reads on ($bg): (contrast $v $bg)"
+  }
+  assert equal $light.roles.on_tint $light.roles.fg "fg on a pastel segment"
+  for role in [tint_red tint_orange tint_yellow tint_green tint_teal tint_accent_alt] {
+    let v = ($light.roles | get $role)
+    assert ($v =~ '^#') $"($role) is a hex on a light theme"
+    assert ((contrast $light.roles.fg $v) >= 4.5) $"fg reads on ($role) ($v): (contrast $light.roles.fg $v)"
+  }
+  # A hue that already reads is left alone: Latte's blue is 4.5:1 on base... its accent stays.
+  assert equal $light.source.text_yellow derived
+  # Rendered for starship: every role has a spelling, on_tint included.
+  let sp = theme starship-palette $light.roles
+  assert equal ($sp | get on_tint) $light.roles.fg
+  assert equal ($sp | get tint_red) $light.roles.tint_red
 }
 
 def "test a palette extending a Ghostty theme resolves at tier three" [] {

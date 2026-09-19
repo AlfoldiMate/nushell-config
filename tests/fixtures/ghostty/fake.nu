@@ -4,9 +4,14 @@
 #
 #   share/ghostty/themes/   the themes it "ships" — `+list-themes` lists them
 #                           as (resources), the config dir's themes/ as (user)
-#   faces                   one family per line that `+show-face` finds; any
-#                           other family resolves to “JetBrains Mono”, the way
+#   faces                   one family per line that `+show-face` finds, on top
+#                           of any family whose files are in the user's font
+#                           dir (`HackNerdFont-*.ttf` is “Hack Nerd Font”);
+#                           anything else resolves to “JetBrains Mono”, the way
 #                           Ghostty falls back to its built-in font
+#   settles-at              a unix timestamp in nanoseconds: until then a family
+#                           is found through `faces` only, not its files — macOS
+#                           registers a font some time after it lands
 #   show-config             when present, printed verbatim by `+show-config`;
 #                           otherwise the config chain is read for real
 #   reload-fails            when present, the fake osascript answers false
@@ -94,8 +99,23 @@ def show-face [root: path, args: list<string>] {
   let family = $args | where {|a| $a starts-with "--font-family=" } | get -o 0 | default "" | str replace "--font-family=" ""
   let faces = $root | path join faces
   let known = if ($faces | path exists) { open --raw $faces | lines } else { [] }
-  let face = if $family in $known { $family } else { "JetBrains Mono" }
+  let settles = $root | path join settles-at
+  let font_dir = font-dir
+  let settled = (not ($settles | path exists)) or ((date now | into int) >= (open --raw $settles | str trim | into int))
+  # Forward slashes: a backslash is an escape in a glob pattern (and '\\' in
+  # single quotes is two of them).
+  let on_disk = ($settled and (glob (($font_dir | str replace -a '\' '/') + $"/($family | str replace -a ' ' '')-*.ttf") | is-not-empty))
+  let face = if ($family in $known) or $on_disk { $family } else { "JetBrains Mono" }
   print $"U+41 « A » found in face “($face)”."
+}
+
+# Where `font install` puts files on this platform (font.nu's `font dir`).
+def font-dir []: nothing -> path {
+  match $nu.os-info.name {
+    "macos" => ($nu.home-dir | path join Library Fonts)
+    "windows" => ($env.LOCALAPPDATA | path join Microsoft Windows Fonts)
+    _ => ($nu.home-dir | path join .local share fonts)
+  }
 }
 
 def theme-dirs [root: path]: nothing -> record {

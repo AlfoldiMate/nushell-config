@@ -19,7 +19,7 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 | `knobs [--overridden]` | every knob from `defaults.nu` and every module's `meta.nuon`, with whether your `settings.nu` sets it |
 | `module list \| info \| check \| enable \| disable \| lint` | the module system — [Modules](../../concepts/modules.md) |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
-| `upgrade` | `git pull --ff-only` in the checkout, then the commits that came in |
+| `upgrade` | `git pull --ff-only` in the checkout, then the commits that came in, then `user init` for any scaffold file the new version ships and your directory lacks (a README, an example — never a file you have) |
 | `upgrade check \| status \| notice \| stale <every>` | fetch now; the last result; the startup line; is the result older than `every` — `conf/update.nu` wires the last two |
 | `plugins list \| add` | the plugin registry |
 | `fetch completion <tool>` | vendor one from nu_scripts **into your directory**, never the distro |

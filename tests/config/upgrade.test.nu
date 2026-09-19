@@ -1,7 +1,7 @@
 # `nu-config upgrade check | status | notice | upgrade` against a git remote
-# made in a scratch directory: this checkout cloned bare as the remote, the
-# remote cloned as the distro under test, and a third clone to push commits
-# from. The commands run from the clone's own modules/ (`distro-root` is
+# made in a scratch directory: this checkout cloned bare as the remote (plus
+# the working tree's uncommitted changes, pushed as one commit), the remote
+# cloned as the distro under test, and a third clone to push commits from. The commands run from the clone's own modules/ (`distro-root` is
 # where the module lives), in a `nu -n` whose $nu.data-dir — the state
 # file's home — is the run's own.
 use lib.nu *
@@ -22,8 +22,23 @@ def clones []: nothing -> record {
   let distro = $d | path join distro
   let work = $d | path join work
   ^git clone -q --bare $ROOT $remote
-  ^git clone -q $remote $distro
   ^git clone -q $remote $work
+  # The clone holds HEAD; an edit to upstream.nu not committed yet would go
+  # untested. What the working tree changed is pushed as one commit first.
+  let changed = (^git -C $ROOT ls-files -m -o --exclude-standard | lines)
+  let deleted = (^git -C $ROOT ls-files -d | lines)
+  for f in ($changed | where {|f| $f not-in $deleted }) {
+    let dest = ($work | path join $f)
+    mkdir ($dest | path dirname)
+    cp ($ROOT | path join $f) $dest
+  }
+  for f in $deleted { rm -f ($work | path join $f) }
+  if ($changed ++ $deleted | is-not-empty) {
+    git $work add -A
+    git $work commit -q -m "working tree"
+    git $work push -q
+  }
+  ^git clone -q $remote $distro
   { remote: $remote, distro: $distro, work: $work, data: ($d | path join data) }
 }
 
@@ -91,6 +106,13 @@ def "test upgrade pulls fast-forward and lists what came in" [] {
   assert ($out | str contains $"updated ($c.distro) → origin/main") $out
   assert ($out | str contains "  a fix") $out
   assert equal (git $c.distro rev-parse HEAD) (git $c.work rev-parse HEAD)
+  # A release may add to the scaffold: what is missing from the user's
+  # directory — the run's own XDG_CONFIG_HOME here — is written after the pull.
+  let user = ($env.XDG_CONFIG_HOME | path join nushell)
+  assert ($out | str contains $"scaffold in ($user)") $out
+  assert ($out | str contains "written settings.nu") $out
+  assert ($user | path join README.md | path exists) "README.md rendered"
+  assert ($user | path join completions hello.nu.off | path exists) "the example rendered"
   let again = in-distro $c 'nu-config upgrade'
   assert ($again.stdout | str contains "already up to date with origin/main") $again.stdout
   assert equal (in-distro $c 'nu-config upgrade status | get behind' | get stdout | str trim) "0"

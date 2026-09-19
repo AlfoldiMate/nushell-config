@@ -88,6 +88,33 @@ const DERIVED = {
   on_accent:  { mix: [bg fg 0.0] }
 }
 
+# ── Hues that have to read ────────────────────────────────────────────────────
+#
+# The sixteen are the terminal's, by name, and a light theme's sixteen are
+# drawn for an editor, not for text on its own background: over the twenty
+# shipped light palettes (2026-09-19, WCAG contrast against bg) yellow reads at
+# 1.7–3.1:1, bright_yellow — every external command you type — at 1.5–2.1,
+# green and cyan at 1.4–3.4, where 4.5 is the floor for text. Two families
+# of derived roles, computed once the hexes are known and left as the hue
+# itself where it already reads:
+#
+#   text_<hue>   the hue as TEXT on bg: pulled towards fg, in steps of 0.05,
+#                until it reads at READS. On a dark theme almost every hue
+#                already does and the role keeps its ANSI name; on a light one
+#                yellow becomes the ochre an editor would use.
+#   tint_<hue>   the hue as a SURFACE with on_tint written on it: pulled
+#                towards bg until on_tint reads on it. on_tint is fg on a
+#                light theme and on_accent on a dark one, so the prompt's
+#                segments are saturated with dark text on a dark background
+#                and pastel with dark text on a light one, instead of the
+#                same saturated bar on both.
+#
+# A palette file may name any of them exactly, like every other role. In tier
+# one they are the hue's own name, and on_tint is on_accent.
+const TEXT_HUES = [red green yellow blue magenta cyan bright_red bright_green bright_yellow bright_blue bright_magenta bright_cyan orange purple pink teal accent accent_alt]
+const TINT_HUES = [red green yellow blue magenta cyan orange purple pink teal accent accent_alt]
+const READS = 4.5
+
 # Ghostty's palette index for each of the sixteen roles; what tier two blends
 # from, and how a palette's `terminal` block becomes a Ghostty theme file.
 const SIXTEEN = {
@@ -161,6 +188,34 @@ def mix [a: string, b: string, t: float]: nothing -> string {
   rgb-hex (hex-rgb $a | zip (hex-rgb $b) | each {|p| (($p.0 * (1 - $t)) + ($p.1 * $t)) | math round | into int })
 }
 
+# WCAG relative luminance, sRGB, and the contrast ratio (1 to 21) between two hexes.
+def luminance [hex: string]: nothing -> float {
+  let c = (hex-rgb $hex | each {|v| let s = ($v / 255); if $s <= 0.03928 { $s / 12.92 } else { (($s + 0.055) / 1.055) ** 2.4 } })
+  (0.2126 * $c.0) + (0.7152 * $c.1) + (0.0722 * $c.2)
+}
+
+def contrast [a: string, b: string]: nothing -> float {
+  let l = ([(luminance $a) (luminance $b)] | sort)
+  ($l.1 + 0.05) / ($l.0 + 0.05)
+}
+
+# `hue` pulled towards `to` until `against` reads on it at READS:1, or null
+# when it already does — the caller keeps the role as it was, name included.
+def pull-until-reads [hue: string, to: string, against: string]: nothing -> any {
+  if (contrast $hue $against) >= $READS { return null }
+  for t in (1..20 | each { $in * 0.05 }) {
+    let c = (mix $hue $to $t)
+    if (contrast $c $against) >= $READS { return $c }
+  }
+  $to
+}
+
+# A role's hex: itself, or the terminal's hex for the ANSI name it is
+# (`purple` is the sixteen's magenta, `light_red` its bright_red).
+def role-hex [v: string, hexes: record, names: record]: nothing -> any {
+  if (is-hex $v) { $v } else { $hexes | get -o ($names | get -o $v | default "") }
+}
+
 def is-hex [v: any]: nothing -> bool {
   ($v | describe) == "string" and ($v =~ '^#[0-9a-fA-F]{6}$')
 }
@@ -231,8 +286,12 @@ export def "theme list" [
 # ── Resolving ─────────────────────────────────────────────────────────────────
 
 # Tier one, as shipped: the file, not a copy of it, so there is one list of roles.
+# ansi.nuon, plus the text_ and tint_ families as the hues' own names.
 def ansi-palette []: nothing -> record {
-  open ($SHIPPED_PALETTES | path join ansi.nuon)
+  let p = (open ($SHIPPED_PALETTES | path join ansi.nuon))
+  let text = ($TEXT_HUES | each {|h| { $"text_($h)": ($p.roles | get $h) } } | as-record)
+  let tint = ($TINT_HUES | each {|h| { $"tint_($h)": ($p.roles | get $h) } } | as-record)
+  $p | update roles ($p.roles | merge $text | merge $tint | merge { on_tint: $p.roles.on_accent })
 }
 
 # A palette's `terminal` block in the shape `theme palette` returns for a
@@ -319,6 +378,46 @@ export def "theme resolve" [
       vivid: ($p | get -o vivid)
       dark: ($p | get -o dark | default $r.dark)
     })
+  }
+  # The hues that have to read, from the roles as they now stand. bg and fg
+  # are the palette's when it named them as hex, the terminal's background
+  # and foreground otherwise: tier two leaves the roles as the names `black`
+  # and `default`, and a light theme's ANSI black is not its background. A
+  # role the palette named is kept.
+  if $term != null and ($term.palette | columns | length) == 16 {
+    let hexes = (term-hexes $term)
+    let names = ($SIXTEEN | columns | each {|k| { ($base.roles | get $k): $k } } | as-record)
+    let bg = (if (is-hex $roles.bg) { $roles.bg } else { $hexes.bg })
+    let fg = (if (is-hex $roles.fg) { $roles.fg } else { $hexes.fg })
+    # The text on a tint is the dark one of the pair — on_accent (the
+    # background's shade) on a dark theme, fg on a light one — and a tint
+    # that does not carry it is pulled towards the light one: fg on a dark
+    # theme (Gruvbox's red lightens until its dark text reads), bg on a light
+    # one (Latte's red fades to a pink). Hex either way: `default` has no
+    # starship spelling.
+    let on_tint_hex = (if $r.dark { (if (is-hex $roles.on_accent) { $roles.on_accent } else { $bg }) } else { $fg })
+    let on_tint = (if $r.dark and (is-hex $roles.on_accent) { $roles.on_accent } else { $on_tint_hex })
+    let towards = (if $r.dark { $fg } else { $bg })
+    if ($source | get -o on_tint) != "palette" {
+      $roles = ($roles | upsert on_tint $on_tint)
+      $source = ($source | upsert on_tint "derived")
+    }
+    for h in $TEXT_HUES {
+      let role = $"text_($h)"
+      if ($source | get -o $role) == "palette" { continue }
+      let hue = ($roles | get $h)
+      let pulled = (pull-until-reads (role-hex $hue $hexes $names) $fg $bg)
+      $roles = ($roles | upsert $role (if $pulled == null { $hue } else { $pulled }))
+      $source = ($source | upsert $role "derived")
+    }
+    for h in $TINT_HUES {
+      let role = $"tint_($h)"
+      if ($source | get -o $role) == "palette" { continue }
+      let hue = ($roles | get $h)
+      let pulled = (pull-until-reads (role-hex $hue $hexes $names) $towards $on_tint_hex)
+      $roles = ($roles | upsert $role (if $pulled == null { $hue } else { $pulled }))
+      $source = ($source | upsert $role "derived")
+    }
   }
   $r | merge { roles: $roles, source: $source }
 }

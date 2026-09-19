@@ -356,6 +356,49 @@ def dir-fallback [partial: string, position: int]: nothing -> list<record> {
   }
 }
 
+# ── Lazy modules ──────────────────────────────────────────────────────────────
+#
+# `font use ⌶` in a shell that has not said `font` yet: conf/modules.nu loads
+# a lazy module from a pre_execution hook, which fires on Enter, so at Tab
+# time Nushell knows neither the command nor its completers and `fon⌶` does
+# not even offer `font`. The candidates come from a child `nu -n` that
+# sources the module's own load.nu and runs the same `commandline complete` —
+# 30 ms measured (2026-09-19, terminal module), on every keystroke while the
+# menu is open, and only until the first Enter loads the module for good.
+
+# The pending lazy module a segment addresses, if any: its first word is one
+# of the module's trigger words (`head: false`), or the segment is a single
+# unfinished word some trigger word starts with (`head: true` — the word
+# itself is a candidate, alongside whatever Nushell already offers).
+def lazy-module [w: record<tokens: list<string>, fresh: bool>]: nothing -> any {
+  let loaded = ($env.NU_MODULES_LOADED? | default [])
+  let triggers = ($env.NU_MODULES_TRIGGERS? | default {})
+  let pending = ($env.NU_MODULES_LAZY? | default [] | where {|m| $m not-in $loaded })
+  if ($pending | is-empty) or ($w.tokens | is-empty) { return null }
+  let first = ($w.tokens | first)
+  let head = (($w.tokens | length) == 1 and not $w.fresh)
+  for m in $pending {
+    let words = ([$m] ++ ($triggers | get -o $m | default []))
+    if $first in $words { return { module: $m, head: false } }
+    if $head and ($words | any {|t| $t != $first and ($t | str starts-with $first) }) { return { module: $m, head: true } }
+  }
+  null
+}
+
+# What Nushell would offer for `buffer` with module `m` loaded. The child gets
+# the parent's NU_LIB_DIRS as a const, because a list-valued environment
+# variable does not reach a child process, and the line on stdin, so nothing
+# in it needs quoting.
+def lazy-complete [m: string, buffer: string]: nothing -> list<record> {
+  let dirs = ($env.NU_LIB_DIRS? | default [])
+  let loader = ($dirs | each {|d| $d | path join $m load.nu } | where {|p| $p | path exists } | get -o 0)
+  if $loader == null { return [] }
+  let script = $"const NU_LIB_DIRS = ($dirs | to nuon); source ($loader | to nuon); $in | commandline complete --detailed | to nuon"
+  let out = ($buffer | ^$nu.current-exe --stdin -n -c $script | complete)
+  if $out.exit_code != 0 { return [] }
+  try { $out.stdout | from nuon } catch { [] }
+}
+
 # ── The menu source ───────────────────────────────────────────────────────────
 
 # Candidates for `buffer` at `position`.
@@ -373,11 +416,16 @@ export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<
   # A custom completer's values (`theme use Cat⌶` → `Catppuccin Macchiato`)
   # arrive unquoted and would be inserted as two arguments; files and
   # carapace's values arrive quoted already.
-  let base = (try { $buffer | commandline complete --detailed } catch { [] } | nu-complete quote)
   let segs = (segments $buffer)
   let seg = ($segs | last)
   let prefix = ($segs | drop 1 | str join "|" | str trim)
   let w = (words $seg)
+  let base = (try { $buffer | commandline complete --detailed } catch { [] } | nu-complete quote)
+  let lazy = (lazy-module $w)
+  let base = if $lazy == null { $base } else {
+    let theirs = (lazy-complete $lazy.module $buffer | nu-complete quote)
+    if $lazy.head { $theirs ++ $base } else { $theirs }
+  }
   if ($w.tokens | is-empty) { return ($base | dedupe) }
   let partial = if $w.fresh { "" } else { $w.tokens | last }
   let before = if $w.fresh { $w.tokens } else { $w.tokens | drop 1 }

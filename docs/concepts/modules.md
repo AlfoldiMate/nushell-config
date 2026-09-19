@@ -79,6 +79,14 @@ all three lazy modules eagerly would add **133 ms** of it (see Cost, below).
 script, so a lazy module is interactive-only. A script must `use odata *`
 itself. If a module has to work in scripts, it cannot be lazy.
 
+Tab is not Enter, so a line that has not been run yet has not loaded anything:
+`font <Tab>` in a fresh shell would find no `font`. The smart menu covers
+this — when the head of the line is a trigger word of a module that is not in
+`$env.NU_MODULES_LOADED`, it asks a child `nu -n` that sources the module's
+`load.nu` (30 ms, `terminal`), so the commands, flags and custom completers
+are all there before the first Enter ([Completion](completion.md#three-layers)).
+`help font` and `which font` still say nothing until that Enter.
+
 If something must happen in every shell regardless — `agent` mints a session id
 and binds Alt+E — put it in `stub.nu`, which `conf/modules.nu` sources
 unconditionally. `stub.nu` must never `use` the module; that would defeat the

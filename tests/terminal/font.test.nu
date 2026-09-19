@@ -75,6 +75,18 @@ def "test install --archive takes exactly the four faces and cleans up" [] {
   assert equal (temp-dirs) $before "the temporary directory is removed"
 }
 
+def "test install waits for Ghostty to find the font it just installed" [] {
+  let fake = fake-ghostty
+  $env.NERD_FONTS_RELEASE = release-with-hack
+  # The fake finds the files only from 600 ms on, the way macOS registers a
+  # font after it lands (1.7 s after brew returned, measured 2026-09-19).
+  ((date now) + 600ms | into int | into string) | save ($fake.root | path join settles-at)
+  let t0 = date now
+  font install Hack --yes --archive
+  assert (((date now) - $t0) >= 600ms) "reported before the face was found"
+  assert equal (font list | where font == Hack | get 0.installed) true
+}
+
 def "test install --archive fails cleanly when the archive has no faces" [] {
   let fake = fake-ghostty
   $env.NERD_FONTS_RELEASE = release-with-hack --without-faces

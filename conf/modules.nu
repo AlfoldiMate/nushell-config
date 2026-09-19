@@ -16,6 +16,9 @@ const MOD_DIR = $DISTRO_ROOT | path join modules
 # and invisible to a command.
 $env.NU_MODULES = $MODULES
 $env.NU_MODULES_LAZY = $MODULES_LAZY
+# `nu-complete smart` reads these two to complete a lazy module's commands
+# before the module is loaded (a child `nu -n` sources its load.nu).
+$env.NU_MODULES_TRIGGERS = $MODULES_TRIGGERS
 
 # ── nu-config ─────────────────────────────────────────────────────────────────
 # First, and never lazy: `nu-config doctor` is how you diagnose everything

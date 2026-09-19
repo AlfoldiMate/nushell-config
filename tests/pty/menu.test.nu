@@ -15,9 +15,12 @@ const HARNESS = ($ROOT | path join tests pty harness.py)
 # `corrupt` is what the partial-completion bug makes of it; `screen` is
 # what the menu must show for a case that only looks.
 const CASES = [
-  { line: "theme current | ignore", keys: "enter" }                     # loads the lazy terminal module
-  { line: "bits r", keys: "tab,tab,enter,enter", want: "bits ror", corrupt: "bits ror o" }
+  # The first two run in a shell that has not loaded the lazy terminal module
+  # yet: the candidates come from a child nu (smart.nu, "Lazy modules"). The
+  # Enter of the second is what loads it.
+  { line: "fon", keys: "tab,esc,ctrl-c", screen: ["font dir" "font list" "font use"] }
   { line: "theme use catp", keys: "tab,tab,tab,tab,enter,enter", want: 'theme use "Catppuccin Macchiato"' }
+  { line: "bits r", keys: "tab,tab,enter,enter", want: "bits ror", corrupt: "bits ror o" }
   { line: "git cher", keys: "tab,tab,enter,enter", want: "git cherry", corrupt: "git cherryry" }
   { line: "str tr", keys: "tab,enter,enter", want: "str trim" }
   { line: "git checkout ", keys: "tab,enter,enter", want: "git checkout feature" }
@@ -66,9 +69,10 @@ def "test the menu completes and inserts under the shipped defaults" [] {
   for r in (recorded $got | where {|r| $r.case.want? != null }) {
     assert equal $r.line $r.case.want $r.case.line
   }
-  let looks = $CASES | enumerate | where {|c| $c.item.screen? != null } | first
-  let screen = $got.screens | get $looks.index
-  for col in $looks.item.screen { assert ($screen | str contains $col) $"($col) not on screen: ($screen)" }
+  for looks in ($CASES | enumerate | where {|c| $c.item.screen? != null }) {
+    let screen = $got.screens | get $looks.index
+    for col in $looks.item.screen { assert ($screen | str contains $col) $"($col) not on screen: ($screen)" }
+  }
 }
 
 def "test partial completion is clean on the release and corrupts the line on main" [] {

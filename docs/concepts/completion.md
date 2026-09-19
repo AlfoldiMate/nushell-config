@@ -62,6 +62,7 @@ description, style, kind — and rewrites:
 | a shadowed built-in | listed once | `uniq-by value` |
 | `theme use Cat⌶` → `"Catppuccin Macchiato"` | a value with a space is one argument | `nu-complete quote`: a `string@completer` value is inserted verbatim by Nushell (both releases, both menus), so the engine quotes what the parser would split, `to nuon` style, and matching still works past the quote. Paths (backticks, Nushell's) and carapace's values (its own `"…"`) arrive quoted already |
 | `ll \| where ⌶` | works | aliases are expanded before the pipeline runs |
+| `fon⌶`, `font use ⌶`, `theme use Cat⌶` in a shell that has not loaded the lazy `terminal` module yet | `font list`, the fonts, the themes — what the loaded module would offer | the segment's head is a trigger word of a lazy module not in `$env.NU_MODULES_LOADED` ([Modules](modules.md#lazy-loading)), so a child `nu -n` sources that module's `load.nu` and answers `commandline complete` for the line: 30 ms for `terminal`, 25 for `agent`, 50 for `odata`, until the first Enter loads it for good |
 | everything else | exactly Nushell's answer | |
 
 ### Running the pipeline: what is allowed
@@ -112,6 +113,7 @@ sample. Memoised 30 s per prefix. `odata People | where ⌶` answers in
 | `cargo add ser` (1.5k crate names from the registry cache) | 80 ms, then memoised for a day | 18 ms |
 | `cargo update ` (562 lockfile packages) | 32 ms | 6 ms |
 | command signatures table | 115 ms, built by a background job at startup | 0.1 ms per lookup |
+| `font use ` before the lazy module is loaded (a child nu sources it) | 30 ms, every keystroke until the first Enter that mentions `font` | — |
 
 The menu source runs again on every keystroke while the menu is open, which
 is why everything is memoised and why the source never runs an external

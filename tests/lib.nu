@@ -79,10 +79,17 @@ exec ($nu.current-exe | to nuon) ($fake | to nuon) osascript "$@"
   $env.PATH = ($env.PATH | prepend $bin)
   $env.GHOSTTY_FAKE = $root
   $env.XDG_CONFIG_HOME = ($root | path join config)
-  # On macOS the module also reads ~/Library/Application Support, which is
-  # the run's fake home: a test that wrote there must not leak into the next.
-  let as = $nu.home-dir | path join Library "Application Support" com.mitchellh.ghostty
-  if ($nu.home-dir | str starts-with ($env.TEST_SCRATCH? | default "/nowhere")) and ($as | path exists) { rm -rf $as }
+  # On macOS the module also reads ~/Library/Application Support, and the
+  # fake finds a font by its files in ~/Library/Fonts (~/.local/share/fonts
+  # elsewhere) — both under the run's fake home, which the file's tests
+  # share: a test that wrote there must not leak into the next.
+  if ($nu.home-dir | str starts-with ($env.TEST_SCRATCH? | default "/nowhere")) {
+    for d in [
+      ($nu.home-dir | path join Library "Application Support" com.mitchellh.ghostty)
+      ($nu.home-dir | path join Library Fonts)
+      ($nu.home-dir | path join .local share fonts)
+    ] { if ($d | path exists) { rm -rf $d } }
+  }
   {
     root: $root
     bin: $bin
