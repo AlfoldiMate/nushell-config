@@ -11,6 +11,7 @@ YOUR config directory                     THE DISTRO (a git checkout)
   autoload/*.nu    drop-ins, loaded last     modules/ completions/ themes/
   completions/     what you fetched          templates/user/  the scaffold of the left-hand side
   themes/          your themes               docs/
+                                             tests/           the suite: nu tests/run.nu
   plugins/         plugins you built
   history.sqlite3, plugin.msgpackz, vendor/, .state/
 ```

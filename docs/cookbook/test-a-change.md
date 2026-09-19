@@ -64,6 +64,20 @@ nu -n -c 'const NU_LIB_DIRS = ["modules"]; use terminal *; theme slug "A B"'    
 nu -n -c 'use modules/terminal *; theme slug "A B"'
 ```
 
+## The suite
+
+```nu
+nu tests/run.nu                          # every test; exit 1 when one fails
+nu tests/run.nu completion               # the files or tests named like it
+```
+
+Each shell a test starts runs against a config directory of its own under
+the run's scratch directory — `settings.nu`, `autoload/`, history, `.state/`
+all there, deleted at the end — so the suite proves the checkout you are in,
+whichever one is live, and leaves yours alone. Run on 2026-09-19: `6 passed,
+0 failed, 0 skipped · 332.3 ms`. [Tests](../reference/tests.md) is how to
+write one.
+
 ## What each kind of change needs
 
 | changed | check |
@@ -75,10 +89,11 @@ nu -n -c 'use modules/terminal *; theme slug "A B"'
 | anything on the startup path | `nu-config startup-time` before and after, or the `--config` form of it: `1..15 \| each { ^$nu.current-exe -l --config /tmp/nu-scratch/config.nu -c '$nu.startup-time' \| into duration } \| math min` |
 | the installer | `nu install.nu --dry-run`, then a real run with `XDG_CONFIG_HOME` pointed at a scratch directory |
 | the docs | every command in the page, run as written |
+| anything with a test | `nu tests/run.nu <its name>`, then the whole suite before the commit |
 
 `nu -c '…'` and `nu script.nu` deliberately load no user config at all, so
 they prove nothing about any of this. CI runs the installer, `nu-check`,
-`module lint` and `doctor` on all three platforms
+`module lint`, `doctor` and the suite on all three platforms
 ([Platforms](../reference/platforms.md)).
 
 ## Then make it live

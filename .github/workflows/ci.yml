@@ -69,6 +69,12 @@ jobs:
       - name: doctor
         run: nu -l -c 'nu-config doctor'
 
+      # The suite. Every shell it starts has a config directory of its own
+      # under the run's scratch directory, so it neither needs nor touches the
+      # one the installer wrote above; docs/reference/tests.md.
+      - name: tests
+        run: nu tests/run.nu --timing
+
       # A default install must leave no override behind; that is the test that
       # the defaults/settings layering works, and it is cheap to keep honest.
       - name: no overrides after a default install

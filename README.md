@@ -77,6 +77,9 @@ it.
 | [Reference](docs/README.md#reference) | every command, every knob, every file; one page per module |
 | [Cookbook](docs/README.md#cookbook) | one task per page: add a completion, override one, write a drop-in, make a palette, pin a font, debug Tab, test a change, uninstall |
 
+`nu tests/run.nu` runs the suite — Nushell on `std assert`, every shell it
+starts in a config directory of its own ([Tests](docs/reference/tests.md)).
+
 ## Platforms
 
 CI runs the real installer and then loads the config for real on macOS,

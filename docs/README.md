@@ -44,6 +44,7 @@ unless it says otherwise; nothing is estimated. Nushell **0.115**.
 | [meta.nuon](reference/meta-nuon.md) | every field a module declares, and what `module lint` checks |
 | [Completion specs](reference/completion-spec.md) | the spec format, sources, caching, the parse budget, the completer's input |
 | [Platforms](reference/platforms.md) | what is proven on macOS, Linux and Windows, and what is not |
+| [Tests](reference/tests.md) | `nu tests/run.nu`: the runner, writing a test, `lib.nu`, the isolation, the cost |
 | **Modules** | |
 | [nu-config](reference/modules/nu-config.md) | `doctor`, `knobs`, `module`, `user`, `tools`, `plugins`, `upgrade`, `startup-time`, `edit` |
 | [nu-complete](reference/modules/nu-complete.md) | the engine behind Tab: `run`, `spans`, `smart`, `quote`, `cache`, `status` |

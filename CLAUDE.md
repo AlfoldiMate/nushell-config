@@ -9,6 +9,7 @@ layout.md` of the two directories. Verify before reporting done:
 nu-check distro.nu                       # parse, follows every `source`
 nu -l -c 'nu-config doctor'              # loads the config for real
 nu -n -c '<snippet>'                     # isolated snippet, no config
+nu tests/run.nu [pattern]                # the suite, docs/reference/tests.md
 ```
 
 `nu -n` has no `NU_LIB_DIRS`, so `nu-check` on anything that imports a module
@@ -54,6 +55,11 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   `defaults.nu` and the module `meta.nuon`s, relative links are rewritten per
   destination. Edit the template or the generator, never a rendered file;
   test with `nu -l --config <scratch>/config.nu -c 'nu-config user init'`.
+- Tests: `tests/<concern>.test.nu`, one `def "test <name>"` per case on
+  `std assert`, `use lib.nu *` for `scratch`, `user-dir`, `nu-l`, `skip`. A
+  shell under test runs against `user-dir` (its own XDG dirs), never against
+  the user's. A name holds letters, digits, spaces and `._+/-` only.
+  Fixtures under `tests/fixtures/`. Run before every commit.
 - Comments explain why, and state measured costs (`timeit`,
   `nu-config startup-time`), not estimates.
 - Nushell makes breaking changes at minor versions. `help <cmd>` and
