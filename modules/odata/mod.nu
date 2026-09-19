@@ -21,7 +21,7 @@
 # call (`odata People | where … | first 5`) reach the server through the
 # pre_execution hook in modules/odata (activate) (pushdown.nu): where, select/get,
 # sort-by, first/skip, expand, length, find → $filter, $select, $orderby,
-# $top/$skip, $expand, /$count, $search. README.md here has the design
+# $top/$skip, $expand, /$count, $search. docs/concepts/odata.md has the design
 # and the measurements; your settings.nu the knobs.
 
 use metadata.nu *
@@ -1177,7 +1177,7 @@ export def "odata status" []: nothing -> table {
 # ── Activation ────────────────────────────────────────────────────────────────
 # Everything this module needs wired into the shell, in one place, so that
 # loading it eagerly (modules/odata/load.nu) and loading it lazily on the first
-# line that says "odata" run exactly the same code. docs/modules.md.
+# line that says "odata" run exactly the same code. docs/concepts/modules.md.
 export def --env "odata activate" []: nothing -> nothing {
   # Defaults. `default` rather than assignment, because your settings.nu was
   # sourced long before this ran and must win.
@@ -1198,7 +1198,7 @@ export def --env "odata activate" []: nothing -> nothing {
   # command that runs. So the hook leaves the plan of what follows each
   # `odata …` call, and `odata get` sends as much of it as it can translate.
   # Cost per Enter: a `str contains` (µs); with "odata" on the line, `ast
-  # --flatten` plus the walk (see README.md).
+  # --flatten` plus the walk (docs/concepts/odata.md).
   $env.config.hooks.pre_execution = ($env.config.hooks.pre_execution? | default [])
   $env.config.hooks.pre_execution ++= [{||
     let line = (commandline)

@@ -16,7 +16,7 @@
 # so it sees your aliases and $env and lands in history. Nushell has no exit
 # hook, so a finished session is checkpointed (/agmem:checkpoint) by the next
 # shell that starts and finds its pid gone (`agent sweep`, modules/agent/stub.nu).
-# docs/agent.md has the design, the measurements and the knobs.
+# docs/concepts/agent.md has the design, the measurements and the knobs.
 
 # modules/agent/mod.nu → the repo, for files in it.
 const ROOT = (path self | path dirname | path dirname | path dirname)

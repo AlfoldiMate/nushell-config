@@ -328,7 +328,7 @@ export def "edit user" []: nothing -> nothing {
 }
 
 # ── Modules ───────────────────────────────────────────────────────────────────
-# docs/modules.md is the contract. Everything here reads meta.nuon at the
+# docs/concepts/modules.md is the contract. Everything here reads meta.nuon at the
 # moment you ask, never at startup: a shell that does not run these commands
 # pays nothing for them.
 
@@ -383,14 +383,17 @@ def mod-list []: nothing -> table {
     let meta = (module-meta $m.path)
     let enabled = ($m.name in ($env.NU_MODULES? | default $MODULES_FALLBACK))
     let deps = ($meta.requires? | default [] | each {|d| dep-state $d })
+    # What this shell did, not what meta.nuon suggests: MODULES_LAZY in the
+    # user's settings.nu decides, and a module moved out of it is eager here.
+    let lazy = (if ($env.NU_MODULES_LAZY? == null) { $meta.lazy? | default false } else { $m.name in $env.NU_MODULES_LAZY })
     {
       module: $m.name
       from: $m.source
       enabled: $enabled
-      lazy: ($meta.lazy? | default false)
+      lazy: $lazy
       # A lazy module is loaded only once something mentioned it; an eager
       # one was loaded at startup if it is enabled at all.
-      loaded: (if ($meta.lazy? | default false) { $m.name in ($env.NU_MODULES_LOADED? | default []) } else { $enabled })
+      loaded: (if $lazy { $m.name in ($env.NU_MODULES_LOADED? | default []) } else { $enabled })
       deps: (if ($deps | is-empty) { "—" } else { $deps | each {|d| $"($d.bin):($d.state)" } | str join " " })
       cost: ($meta.cost? | default 0ns)
       description: ($meta.description? | default "")
@@ -414,8 +417,21 @@ def mod-info [name: string]: nothing -> record {
     cost: ($meta.cost? | default 0ns)
     requires: ($meta.requires? | default [] | each {|d| dep-state $d })
     knobs: ($meta.knobs? | default {})
-    docs: (if ($meta.docs? | default "" | is-empty) { "" } else { $dir.path | path join $meta.docs | path expand })
+    docs: (module-docs $dir $meta)
   }
+}
+
+# Where a module's documentation is. `docs:` in meta.nuon is a path from the
+# root the module came from — docs/reference/modules/<name>.md for a shipped
+# one — but a module of yours may keep a README.md beside its code, so the
+# module directory is tried first. Empty when meta.nuon names nothing.
+def module-docs [dir: record, meta: record]: nothing -> string {
+  let rel = ($meta.docs? | default "")
+  if ($rel | is-empty) { return "" }
+  let local = ($dir.path | path join $rel | path expand)
+  if ($local | path exists) { return $local }
+  let root = (if $dir.source == "distro" { distro-root } else { user-root })
+  $root | path join $rel | path expand
 }
 
 # Private for the same reason as mod-info: `module` is a Nushell keyword.
@@ -504,7 +520,7 @@ export def "module disable" [name: string@module-names]: nothing -> nothing {
   print "  restart your shell to drop it"
 }
 
-# Check every module against the contract in docs/modules.md.
+# Check every module against the contract in docs/concepts/modules.md.
 #
 # A contract nothing checks drifts the first time one is added in a hurry,
 # and a module that half-conforms fails in ways that look like Nushell bugs.
@@ -525,7 +541,7 @@ export def "module lint" []: nothing -> table<module: string, problem: string> {
       (if ($meta.cost? | default 0ns) == 0ns { "meta.nuon has no measured cost" })
       (if not (($m.path | path join mod.nu) | path exists) { "no mod.nu" })
       (if not (($m.path | path join load.nu) | path exists) { "no load.nu — conf/modules.nu has nothing to source" })
-      (if not (($m.path | path join README.md) | path exists) { "no README.md" })
+      (if ($meta.docs? | default "" | is-empty) { "meta.nuon has no docs" } else if not ((module-docs $m $meta) | path exists) { $"docs page ($meta.docs) does not exist" })
       (if ((($m.path | path join load.nu) | path exists) and not ((do -i { nu-check ($m.path | path join load.nu) } | default false))) { "load.nu does not parse — the module would fail on first use" })
       ($meta.requires? | default [] | each {|d|
           if ($d.bin? | default "" | is-empty) { "a requires entry has no bin" } else if ($d.why? | default "" | is-empty) { $"requires ($d.bin) has no why" } else if (["macos" "linux" "windows"] | any {|o| ($d.install? | get -o $o | default "" | is-empty) }) { $"requires ($d.bin) is missing an install line for some platform" } else { null }

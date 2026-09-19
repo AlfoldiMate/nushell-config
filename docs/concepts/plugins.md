@@ -1,6 +1,6 @@
 # Plugins: there is no plugin manager
 
-The question this file answers: *why does this distro have its own
+The question this page answers: *why does this distro have its own
 `nu-config plugins add`, instead of using Nushell's plugin manager?*
 
 Because Nushell does not have one.
@@ -100,7 +100,7 @@ checkout *was* the config directory; after the split it was not on
 `NU_PLUGIN_DIRS` at all, and a plugin binary is the least portable thing in a
 configuration — per platform, per architecture, per protocol version. It
 belongs in your directory with the rest of your machine's state
-(`docs/layout.md`), not in a git repository.
+([Layout](layout.md)), not in a git repository.
 
 ## And nupm?
 

@@ -5,7 +5,7 @@ completers, `commandline complete`, menu sources — the installed binary, and
 what this config runs on) and **the next release** (#18791 unified every
 completer's input and output; merged upstream, not released). Read the 0.115.1
 section first for anything that touches the engine in this config
-(`modules/nu-complete`, `completions/README.md`, `docs/completion.md`), and the
+(`modules/nu-complete`, `docs/reference/completion-spec.md`, `docs/concepts/completion.md`), and the
 last one before writing a completer that has to survive the upgrade.
 
 ## Custom completions

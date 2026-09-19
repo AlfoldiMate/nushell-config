@@ -1,4 +1,4 @@
-# modules/nu-config
+# nu-config
 
 Maintenance commands for this configuration: what is installed, what is
 loaded, what is stale, and what is broken.
@@ -16,7 +16,7 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 |---|---|
 | `doctor` | health check: both roots, layout state, files, search paths, parse, tools, plugins, completion caches, modules |
 | `knobs [--overridden]` | every knob from `defaults.nu` and every module's `meta.nuon`, with whether your `settings.nu` sets it |
-| `module list \| info \| check \| enable \| disable \| lint` | the module system — `docs/modules.md` |
+| `module list \| info \| check \| enable \| disable \| lint` | the module system — [Modules](../../concepts/modules.md) |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
 | `upgrade` | `git pull --ff-only` in the checkout, then the commits that came in |
 | `upgrade check \| status \| notice \| stale <every>` | fetch now; the last result; the startup line; is the result older than `every` — `conf/update.nu` wires the last two |
@@ -46,7 +46,7 @@ Two facts shape this module.
 config, so none of the config's parse-time constants exist. Anything this
 module reads from the config must come through `$env` — `$env.NU_LIB_DIRS`,
 `$env.NU_SMART_TAB`, `$env.NU_MODULES` — never the `const`. Referencing a const
-here makes the module unimportable outside a loaded shell, and the error points
+in the module makes it unimportable outside a loaded shell, and the error points
 at a line that looks fine.
 
 **`update` is a Nushell built-in.** `nu-config upgrade` is the name a user
@@ -68,7 +68,7 @@ shell, so a window closed within a second or two loses that check and the next
 one repeats it — the result is still stale.
 
 **`module` is a Nushell keyword.** `module list` is a perfectly good exported
-name, but it cannot be *called* from inside this file — the parser reads it as
+name, but it cannot be *called* from inside `mod.nu` — the parser reads it as
 the `module` keyword. Hence the private `mod-list`, `mod-info` and `mod-check`,
 which the exported commands delegate to.
 

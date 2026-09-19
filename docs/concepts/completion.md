@@ -94,7 +94,7 @@ the same `[{ columns: { name: { type, value, detailed_type, description? } } }]`
 rows `describe --detailed` would give — several rows when a column has a
 fixed set of values (enum members), a `description` when words beat a
 sample. Memoised 30 s per prefix. `odata People | where ⌶` answers in
-3-4 ms from the cached `$metadata`, with no request (modules/odata/README.md).
+3-4 ms from the cached `$metadata`, with no request ([OData](odata.md)).
 
 ### Costs
 
@@ -125,106 +125,16 @@ itself.
 | git | `completions/git.nu` | `git help -a`, `git <cmd> -h` | refs by recency, changed files, remotes, stashes | config keys, rev ranges, uncommon flags |
 | cargo | `completions/cargo.nu` | `cargo --list` (aliases too), `cargo <cmd> --help` parsed lazily, nested `Commands:` (report, nextest …) | `-p`/`--bin`/`--example`/`--test`/`--bench`/`-F` from `cargo metadata --no-deps`, `--profile` from Cargo.toml, `--target` from rustup, `add`/`install` crate names from the registry cache, `remove` deps, `update`/`tree -i` lockfile, `uninstall` from `.crates.toml`, `+toolchain` | `--config`, `test <name>` (offers nothing), anything else undefined |
 
-## The spec format
+## Teaching it a tool
 
-A spec is a record; `engine.nu` documents it in full. The shape:
-
-```nu
-{
-  description: "…"
-  flags: [ { name: "--cask", short: "-c", description: "…", arg: <source> } ]   # or a closure returning that
-  positionals: [ <source> <source> ]     # 1st, 2nd … positional
-  rest: <source>                         # every positional after those
-  subcommands: { install: { <same shape> } }
-  fallback: "external"                   # carapace when the spec has no answer
-  sources: { formulae: {|ctx| … } }      # named sources, so the rest can be JSON
-}
-```
-
-A `<source>` is a list of strings or `{value, description, style}` records, a
-closure `{|ctx| …}` (`ctx` = `{spans, partial, args, positionals, path}`),
-the string `"files"` for Nushell's path completion, or the name of an entry
-in `sources`. The engine filters with the user's `completions.algorithm` and
-`case_sensitive` — Nushell does not filter command-wide completer output —
-and quotes a value the line would split (`nu-complete quote`), so a source
-returns raw values. Quoting 2000 formulae that need none costs 1.3 ms (one
-regex over the joined values); 463 theme names that do, 8 ms.
-
-## Adding a tool
-
-1. Find where the tool already keeps what you need. In order of preference:
-   a file it maintains (Homebrew's API cache, git's refs), a shell completion
-   it ships (`/opt/homebrew/completions/zsh/_brew` gave every subcommand, flag
-   and positional kind), one cheap subcommand (`git help -a`, `git <cmd> -h`),
-   and only then `--help` scraping or carapace.
-2. Write `completions/<tool>.nu`:
-
-   ```nu
-   use nu-complete *
-   def spec [] { { description: "…", fallback: "external", subcommands: { … } } }
-   def complete-tool [token, place?, buffer?] {
-     try { nu-complete run (spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
-   }
-   @complete "complete-tool"
-   export extern main [...args]      # `main`: a module cannot export an extern of its own name
-   ```
-
-   Cache anything slower than a few milliseconds:
-   `nu-complete cache "key" 5sec { … }` (session, `stor`) for small results;
-   a SQLite file under `nu-complete cache-dir` built with `into sqlite` for
-   big lists (`open x.db | query db "… like 'fo%'"` answers 16k rows in
-   1-3 ms; `stor import` would wipe the session caches). Regenerate when the
-   tool's file is newer (`nu-complete stale target source`); build in a
-   `job spawn` and serve something simpler meanwhile, as brew.nu does.
-3. `use <tool>.nu *` — in `conf/completions.nu` for a module the distro ships,
-   in your own `settings.nu` for one of yours.
-4. Test without a terminal:
-
-   ```nu
-   nu -l -c '"brew install rip" | commandline complete --detailed'
-   nu -l -c 'nu-complete smart "ls | where " 11'
-   ```
-
-   `nu --ide-complete` does not run `@complete` completers, so it cannot test
-   layer 2. For the real thing, the pty harness in the session scratchpad
-   (`nupty.py`) drives an interactive `nu` and prints what the menu showed;
-   it answers Reedline's cursor-position query (`ESC[6n`), without which
-   `nu` never prints a prompt in a pty.
-
-## Automating it: `agent completion <tool>`
-
-`agent completion gh` runs the `completion` skill
-(`.claude/skills/completion/SKILL.md`) on a Claude session of its own. The
-deterministic parts are scripts, runnable by hand:
-
-```nu
-nu .claude/skills/completion/scripts/discover.nu gh --online   # which sources exist, in order (≈1 s)
-nu .claude/skills/completion/scripts/cobra-tree.nu gh --at pr  # a cobra tool's tree via `gh __complete` (hidden subcommands, flag enums, dynamic positionals)
-nu .claude/skills/completion/scripts/fish-spec.nu uv           # a fish completion file → draft spec (uv: 3902 lines in 3 s)
-nu .claude/skills/completion/scripts/help-tree.nu cargo        # recursive --help → draft spec (clap, cobra, argparse, git layouts)
-nu .claude/skills/completion/scripts/verify.nu git --oracle carapace   # every subcommand slot through `commandline complete`, timed, diffed against carapace
-```
-
-The skill's judgement lives in `references/`: `discovery.md` (what each
-source looks like and how to read it, verified on this machine),
-`sources.md` (positional kind → cheapest local data, with measured costs
-and TTLs), `module-template.md` (the module shape, the spec semantics,
-the gotchas). What comes out is a module in the shape of brew.nu and
-git.nu, a `use` line here, and a verification run; the report names the
-cost of each slot.
-
-## Debugging
-
-- `nu-config doctor` → the Completion section: knobs and cache ages.
-- `nu-complete status`, `nu-complete cache clear`.
-- `nu-complete brew spec-data | get subcommands.install`,
-  `nu-complete git spec | get subcommands.checkout`,
-  `nu-complete cargo spec build | get subcommands.build.flags | do $in`.
-- A completer that errors is silent: Nushell falls back to files. Wrap the
-  body in `try { … } catch { null }` on purpose, and test the inner command
-  directly with `commandline complete`.
-- "NO RECORDS FOUND" under the prompt is Reedline's message for an empty
-  menu, not an error.
+Each tool is a spec in `completions/<tool>.nu` — subcommands, flags with
+their values, positionals, and a `sources` record naming where each list comes
+from. The format and the rules a spec has to meet are in
+[Completion specs](../reference/completion-spec.md); building one, by hand or
+with `agent completion <tool>`, is
+[Add Tab completion for a tool](../cookbook/add-completion.md). Everything a
+completer can be asked and every way to watch it answer headless is in
+[Debug Tab](../cookbook/debug-tab.md).
 
 ## The unified completer inputs
 
@@ -271,7 +181,7 @@ What the new inputs bought, and what they did not:
   output in the merged build — the flag is read, but the narrowing matches
   against an empty prefix. `nu-complete filter` stays.
 - `fallback: true` in the returned envelope is **not** "chain to carapace",
-  which is what the PR description reads like and what this file claimed
+  which is what the PR description reads like and what this page claimed
   before it was measured. For a *declared* extern it means "and also what
   Nushell would have offered", which is file completion; the external
   completer is never consulted. Measured: a completer returning

@@ -1,10 +1,15 @@
-# modules/<name>
+# <name>
 
 One sentence: what this module lets you do.
 
 ```nu
 <name> <verb> ...        # the one example that shows why it exists
 ```
+
+This is the reference page: `docs/reference/modules/<name>.md`, named by
+`docs:` in the module's `meta.nuon`. If the module has a design worth a page
+— decisions someone would otherwise re-litigate — that is
+`docs/concepts/<name>.md`, and this page links to it here.
 
 ## Commands
 
@@ -28,7 +33,8 @@ check <name>`.
 
 ## Design
 
-Why it is built this way. The decisions someone would otherwise re-litigate.
+One paragraph, and a link to the concept page if there is one. Not the whole
+story twice.
 
 ## Measured
 
@@ -40,7 +46,7 @@ Nushell version. Not adjectives.
 ```
 mod.nu      the commands, and `<name> activate`
 load.nu     `use` + activate
-meta.nuon   description, dependencies, knobs
+meta.nuon   description, dependencies, knobs, docs
 ```
 
 ## Limits

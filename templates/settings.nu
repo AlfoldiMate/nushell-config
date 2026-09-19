@@ -14,7 +14,7 @@
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 # Not a knob: `theme use <name>` picks one of Ghostty's themes and renders it
-# for tables, ls, bat and the prompt at once (themes/README.md).
+# for tables, ls, bat and the prompt at once (docs/concepts/theming.md).
 
 # ── Editing ───────────────────────────────────────────────────────────────────
 # $env.config.edit_mode = "vi"              # emacs | vi | helix

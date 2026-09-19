@@ -1,6 +1,6 @@
 {
   description: "The terminal itself: which one you have (`terminal`), its theme (`theme`), its configuration (`ghostty`)"
-  docs: "README.md"
+  docs: "docs/reference/modules/terminal.md"
   # paid on the first `theme`, `ghostty` or `font`, not at startup. 78.4 ms of
   # startup with it eager against 60.1 ms lazy, medians of 25, 2026-09-19.
   cost: 18ms

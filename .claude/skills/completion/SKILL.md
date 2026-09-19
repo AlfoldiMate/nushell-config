@@ -17,7 +17,7 @@ per source, memoised for seconds). Read both before writing anything: the
 new module must look like them.
 
 The deliverable is `completions/<tool>.nu`, wired in `conf/completions.nu`,
-verified headless, its costs measured, documented in `docs/completion.md`.
+verified headless, its costs measured, documented in `docs/concepts/completion.md`.
 Not a nu_scripts-style pile of `export extern` lines: those give flags but
 never positionals, never carapace fallback, and never the smart menu.
 
@@ -154,7 +154,7 @@ closure when the list is slow to get.
 
 - Module header: what each source reads, measured Tab costs, what falls to
   carapace, known limits.
-- `docs/completion.md`: a row in the tools table (add the table if it is
+- `docs/concepts/completion.md`: a row in the tools table (add the table if it is
   not there yet) and the new costs.
 - Final report to the user: which slots complete from what, the measured
   costs (first Tab, again), what still goes to carapace, what was not

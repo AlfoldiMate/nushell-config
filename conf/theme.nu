@@ -36,4 +36,4 @@ if $palette.ls_colors { $env.LS_COLORS = (open --raw ($THEME_STATE | path join l
 
 # The prompt's colours are the same roles: conf/prompt.nu points starship at
 # the rendered starship.toml. Which themes there are, the roles, and writing a
-# palette of your own: themes/README.md.
+# palette of your own: docs/concepts/theming.md.

@@ -1,7 +1,7 @@
 # modules.nu — load the enabled modules, eagerly or on first mention
 #
 # Which modules exist and which are lazy is decided in defaults.nu (MODULES,
-# MODULES_LAZY) and overridable in your settings.nu. docs/modules.md explains
+# MODULES_LAZY) and overridable in your settings.nu. docs/concepts/modules.md explains
 # the contract; `nu-config module list` shows the current state.
 #
 # Why this file is repetitive: `use` is parse-time and cannot sit inside an

@@ -4,7 +4,7 @@ Verified against Nushell 0.115.1 and `modules/nu-complete/engine.nu` on
 2026-09-11. Read `engine.nu` itself when in doubt: it is 180 lines and is
 the truth.
 
-`completions/README.md` in the repo is the same contract written for a
+`docs/reference/completion-spec.md` in the repo is the same contract written for a
 person, and is where a change to the module shape should land first; this
 file is the working copy, with the draft-script and verifier detail the
 README leaves out. If the two disagree, the README wins.
@@ -64,7 +64,7 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 # The three names are what nushell#18791 binds by name; the inner `try`s are
 # what keeps the module working on 0.115.1, which binds only the first and
 # leaves the others UNBOUND — naming `$place` there is a runtime error, and a
-# completer that errors is silent. See completions/README.md.
+# completer that errors is silent. See docs/reference/completion-spec.md.
 def complete-<tool> [token, place?, buffer?] {
   try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
 }
@@ -78,7 +78,7 @@ For a big static tree, keep the data in `completions/data/<tool>.json`
 (the draft script's `--json` output, pruned to `description`, `flags`,
 `subcommands`) and merge the sources in. JSON here and NUON everywhere else in
 the distro is deliberate: 195 kB parses in 1.2 ms as JSON and 7.8 ms as NUON,
-and this file is read on the Tab path (`docs/layout.md`, *Formats*).
+and this file is read on the Tab path (`docs/reference/files.md`, *Formats*).
 
 ```nu
 const DATA = (path self | path dirname | path join data <tool>.json)

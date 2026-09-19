@@ -7,7 +7,7 @@
 #   nu-complete status                 what is cached, and where
 #
 # Tool specs live in completions/ (brew.nu, git.nu) and are imported from
-# conf/completions.nu. docs/completion.md explains the design and how to add
+# conf/completions.nu. docs/concepts/completion.md explains the design and how to add
 # a tool.
 
 export use engine.nu *

@@ -9,7 +9,7 @@
 # first start.
 #
 # The colours in the styles are ROLES — red, orange, yellow, green, teal,
-# accent_alt, on_accent — plus the sixteen by name; themes/README.md lists them
+# accent_alt, on_accent — plus the sixteen by name; docs/concepts/theming.md lists them
 # all. A theme that ships a peach gets a peach for `orange` and one that does
 # not gets a blend of its red and yellow. Never write a hex here.
 #

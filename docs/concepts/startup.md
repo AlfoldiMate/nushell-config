@@ -2,8 +2,8 @@
 
 Verified against Nushell 0.115. The full 29-step table is in the book's
 [Configuration](https://www.nushell.sh/book/configuration.html) chapter; this is
-the part that matters for organising a config, and `docs/layout.md` is the map
-of the two directories it walks.
+the part that matters for organising a config, and [Layout](layout.md) is the
+map of the two directories it walks.
 
 | # | What Nushell does | What is there |
 |---|---|---|
@@ -11,7 +11,7 @@ of the two directories it walks.
 | 2 | `$env.config` is filled from the internal defaults; `PATH` becomes a list | |
 | 3 | std library is loaded (not imported); the `$nu` constants are built | |
 | 4 | internal `default_env.nu` (the two default prompt closures), then **`<your>/env.nu`** | nothing — the distro ships none, see below |
-| 5 | internal `default_config.nu` (`$env.config = {}`), then **`<your>/config.nu`** | three lines: `source` the distro's `distro.nu`, which then does everything in `docs/layout.md` |
+| 5 | internal `default_config.nu` (`$env.config = {}`), then **`<your>/config.nu`** | three lines: `source` the distro's `distro.nu`, which then does everything in [Layout](layout.md) |
 | 6 | **`<your>/login.nu`**, only for `nu -l` | nothing — see below |
 | 7 | every `*.nu` in `$nu.vendor-autoload-dirs`, last directory wins | the generated tool init files (`nu-config tools setup`) |
 | 8 | every `*.nu` in `$nu.user-autoload-dirs` = `<your>/autoload` | your drop-ins, the last word |
@@ -75,7 +75,7 @@ mentions it. The hook fires *before* Nushell parses that line, and a hook given
 as a **string** is parsed and merged into the global engine state — as if you
 had typed it — so `use odata *` inside it is in scope for the very line that
 triggered it. Both paths `source` the same `modules/<name>/load.nu`, so how a
-module is imported is written down once (`docs/modules.md`).
+module is imported is written down once ([Modules](modules.md)).
 
 What it costs, measured on this machine:
 
@@ -86,12 +86,21 @@ What it costs, measured on this machine:
 | `odata` | 97 ms, at first mention |
 | a cold interactive start with all three lazy | ~95 ms |
 
+Against what Nushell itself costs — minimum of nine cold starts on an
+M-series Mac, `$nu.startup-time`, 2026-09-19:
+
+| | |
+|---|---|
+| `nu` with an empty config — std and the plugin registry | 47 ms |
+| this distro, on top of that | **84 ms** |
+| the same configuration before lazy loading (2026-09-18) | 161 ms |
+
 **The limit, and it is inherent:** `pre_execution` never fires for `nu -c` or a
 script, so a lazy module is interactive-only. A script must say `use odata *`
 itself. Move a name out of `MODULES_LAZY` in your `settings.nu` to have it
 always loaded; `nu-config module list` shows the current state, and
 `nu-config loaded-files` shows what was actually parsed this session, which is
-how you find a slow import.
+how you find a slow import ([Enable a module, make it lazy, see what it costs](../cookbook/modules.md)).
 
 `agent` is the one module with a `stub.nu`: it is sourced unconditionally
 because every shell has to mint a session id and bind Alt+E, and that costs

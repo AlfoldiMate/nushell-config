@@ -8,7 +8,7 @@
 # hues) have to make do with the sixteen: `dark_gray` is the only grey ANSI
 # has, and `orange` can only be `yellow`. When the theme''s hexes are known
 # those roles are re-derived by blending (tier two), and a palette file next
-# to this one can name them exactly (tier three) — see README.md.
+# to this one can name them exactly (tier three) — docs/concepts/theming.md.
 #
 # It is also what conf/theme.nu loads when `theme use` has never run.
 {

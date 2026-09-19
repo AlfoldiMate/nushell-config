@@ -1,4 +1,4 @@
-# modules/nu-complete
+# nu-complete
 
 The completion engine behind Tab: pipeline-aware, spec-driven, and quiet where
 Nushell's own completer has nothing useful to say.
@@ -52,8 +52,8 @@ A custom menu is the only kind whose `source` closure receives the buffer — a
 `source` on the stock `completion_menu` is ignored by 0.115 — which is why Tab
 is rebound rather than configured.
 
-`docs/completion.md` has the full design; `completions/README.md` is the
-contract for a tool spec.
+[Completion](../../concepts/completion.md) has the full design;
+[Completion specs](../completion-spec.md) is the contract for a tool spec.
 
 ## Measured
 
@@ -81,6 +81,7 @@ use `commandline complete --detailed`. `nu -l -c` does not load the vendor
 autoload dir, where carapace is wired, so the external fallback looks empty
 headless even when it works in the REPL.
 
-Nushell [#18791](https://github.com/nushell/nushell/pull/18791) changes how
-every completer receives its input. It is merged but unreleased as of 0.115.1;
-when it lands, `engine.nu` changes once and every spec follows.
+Nushell [#18791](https://github.com/nushell/nushell/pull/18791) changed how
+every completer receives its input, after 0.115.1. `nu-complete spans` is the
+one place the two shapes meet, and every spec runs on both
+([Completion](../../concepts/completion.md#the-unified-completer-inputs)).

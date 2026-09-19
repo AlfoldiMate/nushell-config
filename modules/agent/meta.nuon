@@ -1,6 +1,6 @@
 {
   description: "Claude Code in the shell: agent ask | exec | skill | command"
-  docs: "README.md"
+  docs: "docs/reference/modules/agent.md"
   # paid on the first `agent`, not at startup
   cost: 18ms
   # stub.nu keeps the session id, the Alt+E binding and the

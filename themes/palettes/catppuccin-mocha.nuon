@@ -7,7 +7,7 @@
 # file supplies the sixteen, and the sixteen stay the terminal's — a role like
 # `red` is never overridden here — so what this adds is the greys, the surfaces
 # and the hues ANSI lacks.
-# README.md has the role list; `colours` may hold any names, and a role may be
+# docs/concepts/theming.md has the role list; `colours` may hold any names, and a role may be
 # one of them or a colour of its own.
 #
 # The values are Catppuccin's published palette, the same ones bat's and vivid's

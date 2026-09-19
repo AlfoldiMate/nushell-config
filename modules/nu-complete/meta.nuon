@@ -1,6 +1,6 @@
 {
   description: "The completion engine behind Tab: pipeline-aware, spec-driven"
-  docs: "../../docs/completion.md"
+  docs: "docs/reference/modules/nu-complete.md"
   # the engine itself; the specs it runs live in conf/completions.nu
   cost: 2ms
   # Eager by design: it owns the Tab menu, which must answer on the very first

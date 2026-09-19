@@ -9,7 +9,7 @@
 # honours algorithm and case_sensitive in its own filtering.
 
 # ── The engine ────────────────────────────────────────────────────────────────
-# modules/nu-complete: docs/completion.md explains it. In short, three layers:
+# modules/nu-complete: docs/concepts/completion.md explains it. In short, three layers:
 #   1. Nushell's own completer (built-ins, flags, cell paths, files).
 #   2. `@complete` externs with a spec per tool (completions/brew.nu, git.nu):
 #      positional completion from the tool's own data, carapace as fallback.

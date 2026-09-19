@@ -14,7 +14,7 @@
 # two questions the installer asks first: is it installed, and are we in it.
 #
 # Lazy, and measured: loading these files costs 18 ms (meta.nuon carries the
-# number and docs/modules.md the method), for commands a shell uses once in a
+# number and docs/concepts/modules.md the method), for commands a shell uses once in a
 # while. So `theme`, `ghostty` and `font` are trigger words — see meta.nuon.
 
 export use ghostty.nu *
@@ -24,7 +24,7 @@ export use detect.nu *
 export use font.nu *
 
 # Nothing to wire: no hooks, no completion providers, no knobs. The contract
-# (docs/modules.md) wants an `activate` and this is the honest one — both files
+# (docs/concepts/modules.md) wants an `activate` and this is the honest one — both files
 # read Ghostty's own configuration at the moment you ask, so there is no state
 # to set up and nothing for the user's settings.nu to have to win against.
 export def "terminal activate" []: nothing -> nothing { }

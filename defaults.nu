@@ -20,7 +20,7 @@
 # Not a knob. The theme is chosen with `theme use <name>` — one of Ghostty's
 # 463 — and rendered for everything at once: tables, `ls`, bat and the prompt
 # follow it, in this window and every new one. Until then the shell uses the
-# terminal's own sixteen colours by name. themes/README.md.
+# terminal's own sixteen colours by name. docs/concepts/theming.md.
 
 # ── Editor ────────────────────────────────────────────────────────────────────
 # Candidates in order; the first one found on PATH becomes $env.EDITOR,
@@ -130,12 +130,12 @@ $env.NU_COMPLETE_EVAL = "safe"
 # a sourced menu is handed the pre-splice line after that insert, so the next
 # Tab replaces the wrong span: `bits r` Tab Tab Enter lands as `bits ror o`,
 # `theme use Cat` as `"Catppuccin tppuccin`. 0.115.1 is clean; set this true
-# there if you miss it. Verified in a pty, 2026-09-19 (docs/completion.md).
+# there if you miss it. Verified in a pty, 2026-09-19 (docs/concepts/completion.md).
 $env.config.completions.partial = false
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 # Which modules this shell has. Each is a directory under modules/ with a
-# mod.nu, a load.nu, a meta.nuon and a README — docs/modules.md is the
+# mod.nu, a load.nu and a meta.nuon — docs/concepts/modules.md is the
 # contract, `nu-config module list` shows what is on.
 #
 # A module carries its OWN defaults, so its knobs are not listed in this file;

@@ -11,7 +11,7 @@
 # Layering works because a `const` in a later `source` shadows an earlier one
 # and a later `$env.` assignment overwrites an earlier one. So you override by
 # mentioning a knob, and a knob you never mention keeps its shipped value —
-# including one added by a later `git pull`. docs/layout.md has the full story.
+# including one added by a later `git pull`. docs/concepts/layout.md has the full story.
 
 # Where the distro lives. `path self` resolves at parse time, so the checkout
 # can sit anywhere and every path below follows it.

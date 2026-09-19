@@ -4,7 +4,7 @@
 # `theme use` in a running session. It is the resolved role record — `$c.accent`,
 # `$c.border`, `$c.orange` — and each value is a Nushell colour, either an ANSI
 # name (`blue`, `dark_gray`) or a hex. Which it is depends on the tier the
-# palette resolved at (themes/README.md): with only the terminal's sixteen the
+# palette resolved at (docs/concepts/theming.md): with only the terminal's sixteen the
 # shaded roles are ANSI names and this file looks like the old terminal.nu;
 # with the theme's hexes known they are blended shades; with a palette file
 # they are exact. This file does not know or care which — that is the point.

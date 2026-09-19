@@ -1,4 +1,4 @@
-# agent — Claude Code inside the shell
+# agent
 
 Ask questions, turn a sentence into a Nushell command, run Claude Code
 skills and slash commands, all from the prompt, on one Claude session that
@@ -17,7 +17,7 @@ Optional: the [agmem](https://github.com/AlfoldiMate/agmem) plugin for
 session checkpoints, and the `nu` MCP server (`claude mcp add nu -s user -- nu --mcp`)
 for `agent ask` to compute answers.
 
-Design, measurements and the reasoning behind each choice: `docs/agent.md`.
+Design, measurements and the reasoning behind each choice: [Agent](../../concepts/agent.md).
 
 ## Commands
 
@@ -153,6 +153,18 @@ $env.AGENT_PERMISSION_MODE = "acceptEdits"
 $env.AGENT_CONFIRM ++= ['\bdocker\b.*\b(rm|prune)\b']
 ```
 
+## Verify
+
+```nu
+nu -l -c 'agent status'
+nu -l -c '"agent skill ag" | commandline complete --detailed'
+cd ~/some/project; nu -l -c 'agent ask how many files are here?'
+nu -l -c 'agent exec --print list the 3 largest files here'
+```
+
+In a REPL: `agent exec print todays date in iso format`, then `i` puts the
+line in the buffer, Enter runs it (verified in a pty on 2026-09-11).
+
 ## Files
 
 ```
@@ -189,6 +201,9 @@ modules/agent/meta.nuon     description, dependencies, knobs
   flag; the insert key exists for exactly that.
 - **One session per shell, not per directory.** Change directories freely,
   each turn re-states the cwd; use `agent reset` if the thread gets confused.
+- **A checkpoint job started by `nu-config startup-time`** (which opens
+  interactive shells) is legitimate but is killed with them; the claim file
+  is taken back after 15 minutes.
 
 ## Future ideas
 

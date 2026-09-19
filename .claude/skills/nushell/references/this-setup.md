@@ -3,7 +3,7 @@
 macOS (arm64), Nushell **0.115.1** via Homebrew, login shell `/bin/zsh`,
 terminal Ghostty, prompt Starship. One theme, the terminal's: `theme use`
 writes Ghostty's config and renders Nushell's colours, LS_COLORS, the bat
-theme and starship's config from the same palette (`themes/README.md`).
+theme and starship's config from the same palette (`docs/concepts/theming.md`).
 
 ## Two directories, and which one to edit
 
@@ -31,8 +31,10 @@ directory and derives history, the plugin registry, the autoload dirs and
   generated tool files and module state all live in the user directory; the
   `.gitignore` is four lines because of it.
 
-`docs/layout.md` in the repo is the full map — layering, formats, load order,
-per-platform coverage. `docs/startup-order.md` is what Nushell loads when.
+`docs/README.md` is the map of the documentation; `docs/concepts/layout.md`
+the layering and load order, `docs/reference/files.md` the formats,
+`docs/reference/platforms.md` the per-platform coverage, `docs/concepts/startup.md`
+what Nushell loads when.
 
 ## The rules that shape the files
 
@@ -48,9 +50,9 @@ per-platform coverage. `docs/startup-order.md` is what Nushell loads when.
   inside an `if` — they are parse-time.
 - `.nu` for anything the parser must see, NUON for anything tooling reads at
   runtime. The two JSON caches that remain are measured and commented.
-- Modules follow `docs/modules.md`: `mod.nu` + `load.nu` + `meta.nuon` +
-  `README.md`, wiring in `activate`, knobs in `meta.nuon`. `nu-config module
-  lint` enforces it.
+- Modules follow `docs/concepts/modules.md`: `mod.nu` + `load.nu` + `meta.nuon`,
+  code only — the page is `docs/reference/modules/<name>.md` — wiring in
+  `activate`, knobs in `meta.nuon`. `nu-config module lint` enforces it.
 
 ## Commands this config adds
 
@@ -117,5 +119,5 @@ nu-config doctor
 ```
 
 Nushell makes breaking changes at minor versions: when the pin moves, the config
-is what has to be re-checked. `docs/plugins.md` explains why there is no plugin
+is what has to be re-checked. `docs/concepts/plugins.md` explains why there is no plugin
 manager to do this for you.

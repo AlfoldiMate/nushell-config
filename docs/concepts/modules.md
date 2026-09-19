@@ -10,10 +10,19 @@ it gets loaded. `nu-config module lint` checks it.
 modules/<name>/
   mod.nu       the commands, and `<name> activate`
   load.nu      `use` + `activate` — the ONLY place that knows how to import it
-  meta.nuon    description, dependencies, knobs        (read at runtime, never at startup)
-  README.md    what it is, commands, configuration, design, costs, limits
+  meta.nuon    description, dependencies, knobs, docs   (read at runtime, never at startup)
   stub.nu      optional: what every shell needs whether the module loads or not
+docs/reference/modules/<name>.md
+               what it is, every command, configuration, dependencies, costs, limits
 ```
+
+A module directory holds code only. Its documentation is a page in this tree,
+named by `docs:` in `meta.nuon` as a path from the distro root
+(`docs/reference/modules/odata.md`), which `nu-config module info` resolves and
+`nu-config module lint` requires to exist. The page's shape is
+`templates/module-doc.md`; its design story, where there is one, is a page
+under `concepts/` that the reference page links to. The header comment of
+`mod.nu` stays: it is the summary a reader gets from `help <name>`.
 
 ## Why `load.nu` exists
 
@@ -123,6 +132,8 @@ knobs: {
 }
 ```
 
+Every field `meta.nuon` takes is in [meta.nuon](../reference/meta-nuon.md).
+
 ## Enabling
 
 `const MODULES` and `const MODULES_LAZY` in `defaults.nu`, overridable in your
@@ -136,6 +147,9 @@ all at parse time, and it costs nothing at runtime.
 
 Adding a module of your own does not need `conf/modules.nu` at all: drop it in
 `<your>/modules/` and `use` it from your `settings.nu`, which is parse-time too.
+A module of yours keeps its page next to its code — `docs: README.md` in its
+`meta.nuon` resolves against the module directory when the path is relative to
+it, and `module lint` accepts either.
 
 ## Checking
 

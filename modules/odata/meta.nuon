@@ -1,6 +1,6 @@
 {
   description: "OData V2/V4 services (SAP Gateway included) as tables"
-  docs: "README.md"
+  docs: "docs/reference/modules/odata.md"
   # paid on the first `odata` or `expand`, not at startup
   cost: 97ms
   # 97 ms to load — the single most expensive thing this config loads, and

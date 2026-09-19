@@ -1,10 +1,12 @@
-# `completions/` — one module per tool
+# Completion specs: one module per tool
 
-Each file here teaches Tab one command-line tool. `conf/completions.nu` is the
-only thing that loads them; `modules/nu-complete/engine.nu` is the engine that
-runs them, and `docs/completion.md` explains how the three completion layers
-fit together. This file is the contract: what a module must look like, what it
-may assume, and what it has to prove before it is wired in.
+Each file in `completions/` teaches Tab one command-line tool.
+`conf/completions.nu` is the only thing that loads them;
+`modules/nu-complete/engine.nu` is the engine that runs them, and
+[Completion](../concepts/completion.md) explains how the three completion
+layers fit together. This page is the contract: what a module must look like,
+what it may assume, and what it has to prove before it is wired in. Building
+one, step by step, is [Add Tab completion for a tool](../cookbook/add-completion.md).
 
 Verified against Nushell 0.115.1 and against 0.115.2, the first build with
 the unified completer inputs; every module here runs on both.
@@ -107,11 +109,11 @@ JSON, and this is the one place in the distro that is not NUON. Measured on
 as indented NUON — NUON's parser costs roughly 6x per byte at every size tried.
 Nothing but the completer reads these files, and the Tab menu source re-runs on
 every keystroke, so the fast format wins here and the rule bends. State a person
-reads or edits stays NUON (`docs/layout.md`, *Formats*).
+reads or edits stays NUON ([Files and formats](files.md)).
 
 ## What it costs to parse
 
-`use` is parse-time: every module here is read and compiled by every shell that
+`use` is parse-time: every module in `completions/` is read and compiled by every shell that
 starts, whether or not you ever touch the tool. So the directory has a budget.
 
 hyperfine, 40 runs, nu 0.115.2, σ ≤ 1.0 ms throughout — each figure is the
@@ -344,7 +346,7 @@ parameters are now bound **by name** from a fixed set — `token`
 shape?}`) and `buffer` — instead of by position. Whether a binary has it:
 `nu -n -c 'attr interactive'`, exit 0 → yes.
 
-Every module here is written for both releases, and the whole of the
+Every shipped module is written for both releases, and the whole of the
 difference is one line:
 
 ```nu
@@ -393,6 +395,6 @@ running any completer — the fastest way to see what a slot looks like.
 | caching | `modules/nu-complete/cache.nu` |
 | the Tab menu source | `modules/nu-complete/smart.nu` |
 | wiring | `conf/completions.nu` |
-| the design, with costs | `docs/completion.md` |
+| the design, with costs | [Completion](../concepts/completion.md) |
 | worked examples | `completions/brew.nu` (files + SQLite), `completions/git.nu` (cheap commands), `completions/cargo.nu` (lazy help parsing) |
 | generating one with an agent | `.claude/skills/completion/` |

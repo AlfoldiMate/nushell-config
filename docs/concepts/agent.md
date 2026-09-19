@@ -1,7 +1,7 @@
 # agent: Claude Code inside the shell
 
-This is the design record. The user guide (commands, the exec menu, key
-bindings, knobs, limitations, future ideas) is `modules/agent/README.md`.
+This is the design record. The commands, the exec menu, the key bindings and
+the knobs are in the [agent reference](../reference/modules/agent.md).
 
 Verified against Nushell 0.115.1 and Claude Code 2.1.268 on 2026-09-11.
 Every cost below was measured with `timeit` or read from Claude's own
@@ -111,7 +111,7 @@ checks the result parses and is wired. The deterministic parts are scripts
 in `.claude/skills/completion/scripts/` (discovery, help/fish/cobra
 parsers, a verifier that runs every slot through `commandline complete` in
 one login shell); the judgement is in `SKILL.md` and its references.
-`docs/completion.md` has the engine side.
+[Completion](completion.md) has the engine side.
 
 ## Measured
 
@@ -128,48 +128,5 @@ one login shell); the judgement is in `SKILL.md` and its references.
 | startup with the module lazy (stub only) | 88 ms, down from 89 to 94 ms when the module body was parsed at startup |
 | `job spawn` at startup | 66 µs |
 
-## Knobs
-
-Declared in `modules/agent/meta.nuon` and defaulted inside `activate`, so
-they are the module's own; set them in your `settings.nu`.
-`nu-config module info agent | get knobs` lists them from the module itself.
-
-| Knob | Default | Meaning |
-|---|---|---|
-| `AGENT_MODEL` | ask/exec `sonnet`, skill/command `null` | per verb; alias or full name; null = Claude Code's default |
-| `AGENT_EFFORT` | ask/exec `low` | per verb |
-| `AGENT_CONFIRM` | rm, kill, sudo, mv, dd, force push, reset --hard, save -f, truncate | regexes; a match asks for a typed yes |
-| `AGENT_PERMISSION_MODE` | `dontAsk` | for skill and command turns; `acceptEdits` lets skills edit files |
-| `AGENT_ALLOWED_TOOLS` | agmem, nu MCP, Read, Glob, Grep, WebFetch, WebSearch, git read commands | Claude Code permission rules |
-| `AGENT_COMPLETION_TOOLS` | Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, nu MCP | tools a `completion` build may use (acceptEdits, own session) |
-| `AGENT_COMPLETION_MAX_TURNS` | 150 | cap on one build |
-| `AGENT_CHECKPOINT` | true | checkpoint finished sessions |
-| `AGENT_CHECKPOINT_MIN_TURNS` | 3 | fewer turns: the session is dropped |
-| `AGENT_DEBUG` | unset | true prints the exact claude argv and sweep decisions |
-
-## Verify
-
-```nu
-nu -l -c 'agent status'
-nu -l -c '"agent skill ag" | commandline complete --detailed'
-cd ~/some/project; nu -l -c 'agent ask how many files are here?'
-nu -l -c 'agent exec --print list the 3 largest files here'
-```
-
-In a REPL: `agent exec print todays date in iso format`, then `i` puts the
-line in the buffer, Enter runs it (verified in a pty on 2026-09-11).
-
-## Known limits
-
-- `-p` mode cannot prompt, so a skill that needs a tool outside
-  `AGENT_ALLOWED_TOOLS` is denied; the footer names the tool. Some plugin
-  commands do nothing in `-p` (`agmem:doctor` returns an empty result in
-  31 ms); `agent command` then prints `(no output)`.
-- `ask` is read-only by instruction only (see above).
-- The startup sweep needs `sh` and `nohup`; on Windows it stays an in-shell
-  job and dies with a short-lived shell.
-- A checkpoint job started by `nu-config startup-time` (which opens
-  interactive shells) is legitimate but will be killed with them; the claim
-  file is taken back after 15 minutes.
-- Alt+E needs the terminal to send Alt as Meta (Terminal.app: "Use Option as
-  Meta key").
+What it does not do, and what is untested, is in the
+[reference's limitations](../reference/modules/agent.md#limitations).

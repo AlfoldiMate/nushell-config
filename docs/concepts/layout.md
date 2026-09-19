@@ -1,9 +1,9 @@
-# Layout: the distro and your directory
+# The distro and your directory
 
 This configuration is two directories, not one.
 
 ```
-YOUR config directory                     THE DISTRO (this checkout)
+YOUR config directory                     THE DISTRO (a git checkout)
 ~/Library/Application Support/nushell     ~/.local/share/nushell-distro
   config.nu        3 lines, points here ──▶  distro.nu     entrypoint
   settings.nu      your overrides            defaults.nu   every knob, shipped value
@@ -36,6 +36,26 @@ that get worse the moment anyone else uses it:
 
 Splitting the two fixes all three at once, and the `.gitignore` drops to four
 lines.
+
+## How Nushell finds the distro
+
+Nushell derives every path it uses — autoload dirs, plugin registry, history,
+`$nu.data-dir` — from its config directory, so the only thing that has to point
+at the checkout is the `config.nu` in that directory. Three lines, written by
+`install.nu`:
+
+```nu
+const DISTRO = "/home/you/.local/share/nushell-distro"
+source ($DISTRO | path join distro.nu)
+```
+
+The checkout stays outside the config directory, which is what keeps `git pull`
+clean and keeps history, `plugin.msgpackz` and generated files out of version
+control. Alternatives that were rejected: symlinking the config directory at the
+checkout (user state lands in the repo, and on macOS `$nu.data-dir` *is* the
+config directory, so generated files land there too), `XDG_CONFIG_HOME` (shared
+with every other app, and must be set before `nu` starts), `nu --config` (only
+redirects two files, and must be repeated at every launch site).
 
 ## How the layering works
 
@@ -70,7 +90,14 @@ source $USER_SETTINGS     # `source null` is a no-op
 
 `if` and `path exists` are const-evaluable in Nushell 0.115, which is what
 makes that work. `open` and `from nuon` are **not**, which is why the enabled
-knobs cannot be read from a NUON file and why `settings.nu` is `.nu`.
+knobs cannot be read from a NUON file and why `settings.nu` is `.nu`
+([Files and formats](../reference/files.md)).
+
+**The test that the layering is right:** accept every default in the installer
+and your `settings.nu` has no assignments in it at all — `nu-config knobs
+--overridden` comes back empty, against 65 knobs that exist. Nothing is copied
+out of `defaults.nu` "so you can see it". A value you never mention keeps
+tracking the distro, including across a `git pull` that changes it.
 
 ## Values versus behaviour
 
@@ -92,43 +119,10 @@ The rule that makes layering work: **a `conf/` file must never assign a value
 `defaults.nu` owns.** It would run after your `settings.nu` and silently
 overwrite it.
 
-## Formats
-
-Two formats, and a reason for each:
-
-| | |
-|---|---|
-| `.nu` | anything the **parser** must see: `defaults.nu`, `settings.nu`, the enabled modules, themes |
-| NUON | anything tooling reads at **runtime**: module `meta.nuon`, state, registries, caches |
-
-`.nu` is not a style choice. `open` and `from nuon` are not const-evaluable in
-0.115 (`scope commands | where is_const` lists `path exists`, `if`, `path join`
-and the `str` commands — not `open`), so a value the parser has to know cannot
-come from a data file. Everything else is NUON: it is Nushell's own literal
-syntax, so a state file reads like the record it is and `open` needs no `--raw`
-and no converter.
-
-No JSON — with two measured exceptions, both machine-written caches that sit on
-the Tab path:
-
-| | |
-|---|---|
-| `$nu.cache-dir/nu-complete/brew-spec.json` | 195 kB: 1.2 ms as JSON, 7.8 ms as NUON |
-| `$nu.cache-dir/odata/<service>.json` | 25 kB: 0.47 ms as JSON, 3.0 ms as NUON |
-
-NUON's parser costs about **6x per byte** at every size tried, which is nothing
-for a 160 B registry (81 µs against 51 µs) and is most of a keystroke's budget
-for a 195 kB spec. Both files carry a comment saying so. The rule those two bend
-is worth keeping anyway: the files a *person* opens — `.state/odata/services.nuon`,
-`.state/agent/sessions/*.nuon` — are NUON, and none of them is large.
-
-Files rendered for another tool are in that tool's format, and are read only by
-it: `.state/theme/starship.toml`, `ls_colors`, `ghostty/<slug>` and `icons/*.png` (`theme use`),
-`vendor/autoload/*.nu` (`nu-config tools setup`).
-
-Written NUON is `to nuon --indent 2`: one key per line, so a diff shows the line
-that changed rather than the whole file, and empty or null fields are dropped
-before saving rather than stored as `{}`.
+A module's knobs are the exception that proves it: they are not in
+`defaults.nu` at all. A module declares them in its `meta.nuon` and applies
+them in `activate` with `default`, never assignment, so your `settings.nu`
+still wins ([Modules](modules.md)).
 
 ## Load order
 
@@ -140,7 +134,8 @@ before saving rather than stored as `{}`.
 6. `$nu.vendor-autoload-dirs/*.nu` — generated tool init files
 7. `<your>/autoload/*.nu` — your drop-ins, the last word
 
-Steps 6 and 7 are Nushell's own doing, not this config's.
+Steps 6 and 7 are Nushell's own doing, not this config's; [Startup](startup.md)
+has Nushell's side of the table and what the lazy modules do to step 4.
 
 ## Search paths
 
@@ -153,116 +148,27 @@ Steps 6 and 7 are Nushell's own doing, not this config's.
 
 So `use git.nu *` resolves your copy if you have one and the shipped copy
 otherwise. Copying a shipped completion into your own `completions/` and
-editing it is the whole override mechanism.
+editing it is the whole override mechanism
+([Override a shipped completion](../cookbook/override-completion.md)); the same
+holds for a theme template or a palette in your `themes/`.
 
-## Installing
+`NU_PLUGIN_DIRS` is the same shape: your `plugins/`, then the directory `nu`
+itself lives in ([Plugins](plugins.md)).
 
-`install.nu` is seven screens, and every one of them is skippable:
+## Where a thing goes
 
-| | |
+| Want to | Do |
 |---|---|
-| 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
-| 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
-| 3. Terminal | is Ghostty installed, are you *running* in it, the install line if not — and whether a new window starts Nushell (the one question whose default is yes) |
-| 4. Theme | one of a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal, then written to Ghostty with its icon and rendered for tables, `ls`, bat and the prompt |
-| 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
-| 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |
-| 7. The plan | every line that will be written, then one yes |
-
-```nu
-nu install.nu              # the seven screens
-nu install.nu --defaults   # no questions, every shipped value
-nu install.nu --dry-run    # print the plan, change nothing
-```
-
-Nothing is written before screen 7 — the theme preview paints the terminal and
-`theme reset` hands it back, so even a cancelled installer leaves Ghostty's
-configuration alone. Fonts are the exception, because a font has to exist
-before it can be rendered; the installer asks before downloading one.
-
-With no terminal on stdin and stdout the installer takes every default by
-itself, which is what makes `curl … | sh` work without a flag.
-
-**The test that the layering is right:** accept every default and your
-`settings.nu` has no assignments in it at all — `nu-config knobs --overridden`
-comes back empty, against 65 knobs that exist. Nothing is copied out of
-`defaults.nu` "so you can see it". A value you never mention keeps tracking the
-distro, including across a `git pull` that changes it.
-
-## Checking it
-
-```nu
-nu-config doctor            # both roots, the layout state, parse, tools, plugins
-nu-config knobs             # every knob, and whether you have overridden it
-nu-config knobs --overridden
-nu-config edit user         # your config directory, settings.nu first
-```
+| Change a setting | your `settings.nu` — `nu-config edit user` |
+| Add an alias, a hook, a keybinding | a file in your `autoload/`, loaded last |
+| Add a module | drop it in your `modules/`, `use` it from `settings.nu`; [Modules](modules.md) is the contract `nu-config module lint` enforces |
+| Turn a shipped module off | `const MODULES = [...]` without it, or `nu-config module disable <name>` |
+| Add completions for a tool | `agent completion <tool>`, or by hand ([Add Tab completion for a tool](../cookbook/add-completion.md)) |
+| Change the theme | `theme` ([Theming](theming.md)) |
+| Wire up a tool that emits a Nushell init file | add it to the registry in `modules/nu-config/tools.nu`, run `nu-config tools setup` |
+| Wire up a tool that does not | a file in your `autoload/`, guarded with `which` |
+| Add a plugin | put the binary in your `plugins/`, `plugin add <name>`, restart ([Plugins](plugins.md)) |
 
 `nu-config doctor` reports the layout as `split` (the target), `in-place` (the
 checkout is still doubling as the config directory — run `nu install.nu`) or
 `other` (something else is live).
-
-## Updating
-
-```nu
-nu-config upgrade            # git pull --ff-only in the checkout, and what came in
-nu-config upgrade check      # fetch now and say where the checkout stands
-nu-config upgrade status     # the last check's result, no network
-```
-
-You do not have to remember to: once every `UPDATE_CHECK_EVERY` (a day) an
-interactive shell spawns a background job that fetches, and the next start
-prints one line when the checkout is behind. The fetch is never on the startup
-path — a start reads the last result out of `<your>/.state/nu-config/
-upgrade.nuon` (0.3 ms) — and the line is keyed to the HEAD the check saw, so it
-disappears as soon as HEAD moves, by `nu-config upgrade` or by hand. `nu -c` and
-scripts neither print nor spawn anything. `conf/update.nu` is the wiring,
-`modules/nu-config/upstream.nu` the commands.
-
-## Verifying a change to the distro
-
-```nu
-nu-check distro.nu                 # parse only, follows every `source`
-nu -l -c 'nu-config doctor'        # loads the config for real
-nu -n -c '<snippet>'               # isolated snippet, no config
-```
-
-`nu -c '...'` and `nu script.nu` deliberately load no user config at all, so
-they prove nothing about this file. Note that `nu -n` also has no
-`NU_LIB_DIRS`, so `nu-check` on a file that imports a module will report
-`false` there for reasons that have nothing to do with the file.
-
-## Platforms
-
-`.github/workflows/ci.yml` runs the real installer and then loads the config for
-real on macOS, Linux and Windows, every push: install, `install-status` is
-`split`, `nu-check distro.nu`, `nu-config module lint`, `nu-config doctor`, and
-a default install leaving no overrides behind.
-
-That is the floor, and it is worth being exact about the ceiling. What is
-actually exercised, per platform:
-
-| | macOS | Linux | Windows |
-|---|---|---|---|
-| parses, installs, loads | CI, and by hand | CI | CI |
-| `bootstrap/install.sh` | by hand: clone, re-run as fast-forward, and the release-tarball path with `nu` off PATH | `sh -n` only | n/a |
-| `bootstrap/install.ps1` | n/a | n/a | parse only |
-| theme picker, Ghostty config | by hand | not run — no Ghostty on the runner | Ghostty has no Windows build |
-| font install | by hand, archive path; the Homebrew cask path is not run | not run; `fc-cache` branch unexercised | not run; the `HKCU\…\Fonts` registry step is written from the docs only |
-| `port` | `lsof`, by hand | `lsof`, not run | the `netstat -ano` branch, not run |
-
-The pattern in everything above: what a platform *cannot* do is stated rather
-than papered over. `terminal install` on Windows prints the download page and
-runs nothing, because there is no Ghostty build to install; `port` errors with
-the command to use instead when `lsof` is absent, rather than returning an
-empty table that would read as "nothing is listening".
-
-Two things that look platform-specific and are not: `duh` uses Nushell's own
-`du`, which is a built-in and takes `--max-depth` on every platform, and `tree`
-/ `lt` / `rgt` want `eza` and `ripgrep` but are `alias` and `def`, so a missing
-tool costs a "command not found" the moment you use one and nothing at startup.
-
-## Undoing it
-
-Delete your `config.nu` (or point `DISTRO` at something else) and delete the
-checkout. Nothing else in your config directory belongs to the distro.

@@ -8,7 +8,7 @@
 # What this does NOT cover, and it is most of the interesting part: Ghostty is
 # not installed on any runner, so the theme picker, the font installer and the
 # terminal registry are exercised only to the point of reporting "not
-# installed". docs/layout.md says which platforms those have actually been run
+# installed". docs/reference/platforms.md says which platforms those have actually been run
 # on. A green matrix here means the configuration parses, installs and loads.
 
 name: ci
