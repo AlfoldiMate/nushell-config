@@ -2,9 +2,9 @@
 # install.nu — point Nushell at this distro, and give you a directory of your own
 #
 #   nu install.nu                 the interactive installer
-#   nu install.nu --defaults      every shipped default, no questions
+#   nu install.nu --defaults      every shipped default, no questions (Ghostty included, on macOS)
 #   nu install.nu --dry-run       print the plan, change nothing
-#   nu install.nu --skip-tools --skip-plugins
+#   nu install.nu --skip-tools --skip-plugins --skip-terminal
 #
 # Idempotent: safe to re-run after `git pull`, after installing a tool, or
 # after upgrading Nushell.
@@ -54,6 +54,7 @@ def main [
   --defaults      # no questions; every shipped default
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
+  --skip-terminal # do not install Ghostty (CI, the tests)
 ] {
   print $"(ansi cyan_bold)Nushell distro(ansi reset)  ($ROOT)"
   print ""
@@ -71,7 +72,7 @@ def main [
     {}
     | merge (screen-where --ask=$ask)
     | merge (screen-modules --ask=$ask)
-    | merge (screen-terminal --ask=$ask --dry-run=$dry_run)
+    | merge (screen-terminal --ask=$ask --dry-run=$dry_run --skip=$skip_terminal)
     | merge (screen-theme --ask=$ask)
     | merge (screen-font --ask=$ask --dry-run=$dry_run)
   )
@@ -160,7 +161,7 @@ def screen-modules [--ask]: nothing -> record {
 
 # ── 3. Terminal ───────────────────────────────────────────────────────────────
 
-def screen-terminal [--ask, --dry-run]: nothing -> record {
+def screen-terminal [--ask, --dry-run, --skip]: nothing -> record {
   print $"(ansi cyan_bold)3. Terminal(ansi reset)"
   let t = (terminal list | get 0)
   let here = (terminal current)
@@ -175,11 +176,11 @@ def screen-terminal [--ask, --dry-run]: nothing -> record {
   if not $t.installed {
     let plan = (terminal install-plan)
     print $"  install:  ($plan.command | default $plan.note)"
-    # Default yes: the theme, the icon, the font and `ghostty shell` are all
-    # Ghostty's, so a distro without it is half a distro. Still a question —
-    # `--defaults` and a `curl … | sh` run print the line and install nothing,
-    # because an application is not something to download unasked.
-    if $ask and (not $dry_run) and $plan.runnable and (yes-no "install Ghostty now?") {
+    # Default yes, and `--defaults` (so `curl … | sh`) does it unasked: the
+    # theme, the icon, the font and `ghostty shell` are all Ghostty's, so a
+    # distro without it is half a distro. Only where the plan is a command
+    # (macOS: the Homebrew cask); `--skip-terminal` is for CI and the tests.
+    if (not $dry_run) and (not $skip) and $plan.runnable and ((not $ask) or (yes-no "install Ghostty now?")) {
       terminal install --yes
     }
   }

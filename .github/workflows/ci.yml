@@ -48,9 +48,10 @@ jobs:
 
       # install.nu takes every default by itself when there is no terminal on
       # stdin and stdout, so --defaults is belt and braces. Plugins are skipped:
-      # the runner's nu has no plugin binaries beside it to register.
+      # the runner's nu has no plugin binaries beside it to register. The
+      # terminal too: --defaults would brew-install Ghostty on the macOS runner.
       - name: install
-        run: nu install.nu --defaults --skip-plugins
+        run: nu install.nu --defaults --skip-plugins --skip-terminal
 
       - name: the split happened
         run: |

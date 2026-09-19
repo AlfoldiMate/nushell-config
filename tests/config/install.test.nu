@@ -14,7 +14,7 @@ def --env fresh-config-home []: nothing -> string {
 }
 
 def --wrapped install [...flags: string]: nothing -> record {
-  ^$nu.current-exe ($ROOT | path join install.nu) --skip-tools --skip-plugins ...$flags | complete
+  ^$nu.current-exe ($ROOT | path join install.nu) --skip-tools --skip-plugins --skip-terminal ...$flags | complete
 }
 
 # Forward slashes: a backslash is an escape in a glob pattern, and the
