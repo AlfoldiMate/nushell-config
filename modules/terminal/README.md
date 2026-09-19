@@ -39,7 +39,7 @@ questions `install.nu` asks before any of them runs.
 | `theme status` | what is rendered, from which theme, at which tier, and whether Ghostty agrees |
 | `theme sync [name]` | re-resolve and re-render — after a `git pull` changed a template, or `--none` to forget the theme |
 | `theme resolve [name]` | the resolved theme as data, nothing written |
-| `theme names` | the names alone; what every `<name>` completes from |
+| `theme names [--ghostty]` | the names alone — palettes, or Ghostty's. Tab on a `<name>` offers the palettes, or Ghostty's once `--ghostty` is on the line |
 | `ghostty status` | the config Ghostty reads, what we own in it, and the theme and shell Ghostty resolves |
 | `ghostty shell [--reset]` | make Nushell what a new window starts; `--reset` hands that back to `SHELL` / passwd |
 | `ghostty nu-path` | the nu that `shell` writes: the one on PATH, not the running binary |

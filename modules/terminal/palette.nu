@@ -186,9 +186,21 @@ export def "theme palettes" []: nothing -> table<name: string, dark: bool, kind:
   | uniq-by name
 }
 
-# What every `<name>` argument completes from: the palettes, then Ghostty's.
-export def "theme names" []: nothing -> list<string> {
-  (theme palettes | get name) ++ (try { ghostty names } catch { [] }) | uniq
+# The names alone: the palettes, or Ghostty's with --ghostty — the same split
+# as `theme list`.
+export def "theme names" [--ghostty]: nothing -> list<string> {
+  if $ghostty { ghostty names } else { theme palettes | get name }
+}
+
+# What a `<name>` argument completes from: the palettes, unless `--ghostty` is
+# already on the line, then Ghostty's. What the completer is handed differs by
+# release — 0.115.1 fills the first positional with the command text typed so
+# far and leaves the rest unbound; main (nushell#18791) binds `token` (a
+# record) and `buffer` (the line to the cursor) by name — and both carry the
+# flag, so the test is on whichever arrived as a string.
+def theme-completion [token?: any, place?: any, buffer?: any]: nothing -> list<string> {
+  let line = (if ($token | describe) == "string" { $token } else { (try { $buffer }) | default "" })
+  theme names --ghostty=($line =~ '--ghostty')
 }
 
 # The themes to choose from: the palettes, or Ghostty's own with --ghostty.
@@ -484,7 +496,7 @@ export def --env "theme apply" [state: record]: nothing -> nothing {
 
 # Paint this session with a theme and change nothing on disk.
 export def "theme preview" [
-  name: string@"theme names"
+  name: string@theme-completion
   --ghostty   # one of Ghostty's, not a palette
 ]: nothing -> nothing {
   let t = (theme resolve $name --ghostty=$ghostty)
@@ -497,7 +509,7 @@ export def "theme preview" [
 # the shell's own colours — tables, `ls`, bat, the prompt — rendered from it,
 # for this session and every one after.
 export def --env "theme use" [
-  name: string@"theme names"
+  name: string@theme-completion
   --ghostty   # one of Ghostty's 463, not a palette (`theme list --ghostty`)
   --no-icon   # leave the app icon alone
 ]: nothing -> nothing {
@@ -587,7 +599,7 @@ export def "theme current" []: nothing -> any {
 
 # Every role, its value and the tier that decided it — for a named theme, or
 # the current one. In colour, so the row shows the colour it is talking about.
-export def "theme roles" [name?: string@"theme names", --ghostty]: nothing -> table {
+export def "theme roles" [name?: string@theme-completion, --ghostty]: nothing -> table {
   let cur = (theme current | default {})
   let t = (theme resolve ($name | default ($cur | get -o name)) --ghostty=($ghostty or ($name == null and ($cur | get -o by) == "ghostty")))
   $t.roles | items {|k, v| { role: $k, value: $v, from: ($t.source | get $k), swatch: (swatch-of $v) } }
