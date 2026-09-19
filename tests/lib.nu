@@ -53,7 +53,9 @@ export def nu-l [dir: record, code: string]: nothing -> record {
 
 # Stop this test with a reason instead of a verdict; run.nu counts it apart
 # from the failures. For a test that only makes sense with a tool installed
-# or on one platform, which says so rather than passing vacuously.
-export def skip [reason: string] {
+# or on one platform, which says so rather than passing vacuously. Not
+# `skip`: a module `use`d after this file resolves names against the scope
+# it is parsed in, and the engine's `skip $n` became this command.
+export def skip-test [reason: string] {
   error make -u { msg: $"skip: ($reason)" }
 }

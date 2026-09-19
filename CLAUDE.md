@@ -56,10 +56,12 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   destination. Edit the template or the generator, never a rendered file;
   test with `nu -l --config <scratch>/config.nu -c 'nu-config user init'`.
 - Tests: `tests/<concern>.test.nu`, one `def "test <name>"` per case on
-  `std assert`, `use lib.nu *` for `scratch`, `user-dir`, `nu-l`, `skip`. A
+  `std assert`, `use lib.nu *` for `scratch`, `user-dir`, `nu-l`, `skip-test`. A
   shell under test runs against `user-dir` (its own XDG dirs), never against
-  the user's. A name holds letters, digits, spaces and `._+/-` only.
-  Fixtures under `tests/fixtures/`. Run before every commit.
+  the user's. A name holds letters, digits, spaces and `._+/=:,-` only. Never
+  name a helper after a built-in (`complete`, `skip`): a file's defs shadow it
+  inside every module the file `use`s. Fixtures under `tests/fixtures/`. Run
+  before every commit.
 - Comments explain why, and state measured costs (`timeit`,
   `nu-config startup-time`), not estimates.
 - Nushell makes breaking changes at minor versions. `help <cmd>` and

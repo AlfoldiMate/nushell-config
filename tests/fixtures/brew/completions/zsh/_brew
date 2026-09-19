@@ -1,0 +1,86 @@
+#compdef brew
+#autoload
+
+# A trimmed copy of Homebrew's generated zsh completion (brew 4.6, 2026-09-19):
+# five commands, a handful of flags each, every kind of positional the parser
+# in completions/brew.nu knows. The real file is 175 kB and 3000 lines; this
+# one keeps the shapes, not the contents.
+
+__brew_internal_commands() {
+  local -a commands
+  commands=(
+    'alias:Show an alias'\''s command'
+    'install:Install a formula or cask'
+    'list:List all installed formulae and casks'
+    'tap:Tap a repository containing formulae, casks, or external commands'
+    'uninstall:Uninstall a formula or cask'
+  )
+  _describe -t commands 'Homebrew commands' commands
+}
+
+_brew_alias() {
+  _arguments \
+    '--edit[Edit aliases in a text editor]' \
+    '--help[Show this message]' \
+    '*::alias:__brew_aliases'
+}
+
+_brew_install() {
+  _arguments \
+    '(--cask)--HEAD[If formula defines it, install the HEAD version, aka. main, trunk, unstable, master]' \
+    '--dry-run[Show what would be installed, but do not actually install anything]' \
+    '--help[Show this message]' \
+    '--quiet[Make some output more quiet]' \
+    '--verbose[Print the verification and post-install steps]' \
+    - formula \
+    '(--casks --binaries)--formula[Treat all named arguments as formulae]' \
+    '*:formula:__brew_formulae' \
+    - cask \
+    '(--formulae --ignore-dependencies)--cask[Treat all named arguments as casks]' \
+    '*:cask:__brew_casks'
+}
+
+_brew_list() {
+  _arguments \
+    '--help[Show this message]' \
+    '(--installed-on-request --versions)--pinned[List only pinned packages, or only the specified (pinned) packages if formula or cask are provided. See also `pin`, `unpin`]' \
+    '--versions[Show the version number for installed formulae, or only the specified formulae if formula are provided]' \
+    - installed_formula \
+    '(--cask)--formula[List only formulae, or treat all named arguments as formulae]' \
+    '*:installed_formula:__brew_installed_formulae' \
+    - installed_cask \
+    '(--formula --multiple)--cask[List only casks, or treat all named arguments as casks]' \
+    '*:installed_cask:__brew_installed_casks'
+}
+
+_brew_tap() {
+  _arguments \
+    '--custom-remote[Install or change a tap with a custom remote. Useful for mirrors]' \
+    '--help[Show this message]' \
+    '--repair[Add missing symlinks to tap manpages and shell completions. Correct git remote refs for any taps where upstream HEAD branch has been renamed]' \
+    - tap \
+    '*:tap:__brew_any_tap'
+}
+
+_brew_uninstall() {
+  _arguments \
+    '--force[Delete all installed versions of formula. Uninstall even if cask is not installed, overwrite existing files and ignore errors when removing files]' \
+    '--help[Show this message]' \
+    '--ignore-dependencies[Don'\''t fail uninstall, even if formula is a dependency of any installed formulae]' \
+    '(--formula)--zap[Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
+    - installed_formula \
+    '(--cask --zap)--formula[Treat all named arguments as formulae]' \
+    '*:installed_formula:__brew_installed_formulae' \
+    - installed_cask \
+    '(--formula)--cask[Treat all named arguments as casks]' \
+    '*:installed_cask:__brew_installed_casks'
+}
+
+_brew() {
+  _arguments -C : \
+    '(-v)-v[verbose]' \
+    '1:command:->command' \
+    '*::options:->options' && return 0
+}
+
+_brew "$@"

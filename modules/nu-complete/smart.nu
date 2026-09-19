@@ -407,8 +407,14 @@ export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<
     if ($items | is-not-empty) { return $items }
   }
 
+  # Nothing before the command, a flag, or a flag's value: no columns to
+  # offer, but the slot may still refuse files — `ps ⌶` takes no positional
+  # and `first ⌶` wants a number (the tests found the number rule applied
+  # only after a pipe, 2026-09-19).
   if $slot.valued or ($partial | str starts-with "-") or ($prefix | is-empty) {
-    return (if $slot.index >= $s.npos and not $s.rest and not ($partial | str starts-with "-") and not $slot.valued { $no_files | dedupe } else { $base | dedupe })
+    let full = ($slot.index >= $s.npos and not $s.rest)
+    let bare = (not ($partial | str starts-with "-") and not $slot.valued)
+    return (if $bare and ($full or (wants-number $shape)) { $no_files | dedupe } else { $base | dedupe })
   }
 
   # where / any / all: column, operator, value, and again after and/or.
@@ -453,7 +459,11 @@ export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<
   }
 
   if $slot.index >= $s.npos and not $s.rest { return ($no_files | dedupe) }
-  # `first ⌶`, `skip ⌶`, `sleep ⌶`: a number is wanted, not a file.
-  if ($shape =~ '^(oneof<)?(int|number|float|duration|filesize|range)[,>]?') and ($shape !~ 'path|string|glob|any') { return ($no_files | dedupe) }
+  if (wants-number $shape) { return ($no_files | dedupe) }
   $base | dedupe
+}
+
+# `first ⌶`, `skip ⌶`, `sleep ⌶`: a number is wanted, not a file.
+def wants-number [shape: string]: nothing -> bool {
+  ($shape =~ '^(oneof<)?(int|number|float|duration|filesize|range)[,>]?') and ($shape !~ 'path|string|glob|any')
 }

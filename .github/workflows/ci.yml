@@ -105,7 +105,9 @@ jobs:
             let lang = ("hello greet --lang " | commandline complete)
             print { subcommands: $subs, lang: $lang }
             # `in`, not `==`: the drop-in just sourced turned fuzzy matching on, and
-            # Nushell's own command matching then adds `nu-complete hello spec`.
+            # the command matching of Nushell itself then adds `nu-complete hello spec`.
+            # (No apostrophe in this comment: bash reads the whole script as one
+            # single-quoted string.)
             if not ([greet wave] | all {|x| $x in $subs }) or $lang != [en fr de] { error make { msg: "hello.nu does not complete its slots" } }
             use terminal *
             let t = (theme resolve Example | select name by tier)

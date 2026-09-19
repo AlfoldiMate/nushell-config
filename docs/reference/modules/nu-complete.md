@@ -74,6 +74,17 @@ load.nu      `use nu-complete *` + activate
 meta.nuon    description, dependencies, knobs
 ```
 
+## Tests
+
+`nu tests/run.nu completion` — four files under `tests/completion/`, 43
+tests, 2.4 s on the user's build and 2.9 s on the 0.115.1 release
+(2026-09-19): `engine` (spans, filter, quote, `run` over an inline spec),
+`smart` (columns, operators, values, the no-files rules, the eval gating with
+a `save` that must not run), `specs` (brew against `tests/fixtures/brew`,
+git and cargo against a scratch repository and workspace) and `cost` (the
+numbers above as upper bounds, ten to twenty times the measurement).
+[Tests](../tests.md) is how to add one.
+
 ## Limits
 
 `nu --ide-complete` does not run `@complete` completers, so it proves nothing;

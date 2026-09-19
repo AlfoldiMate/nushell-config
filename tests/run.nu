@@ -11,8 +11,8 @@
 # completions/ and themes/ — so a test sees the shipped modules the way a
 # shell does and nothing the user's config sets. The tests are listed with
 # `scope commands` after the file is sourced, so a test is whatever parses as
-# one, and each runs inside a `try`: `std assert` makes the failure, `skip`
-# (lib.nu) makes a skip, reaching the end is the pass. One line per test, a
+# one, and each runs inside a `try`: `std assert` makes the failure,
+# `skip-test` (lib.nu) makes a skip, reaching the end is the pass. One line per test, a
 # summary, exit 1 when anything failed.
 #
 # Budget: the whole suite under 30 s, so it is run before every commit.
@@ -33,12 +33,27 @@ def main [
   --dir: string       # the directory to search instead of tests/ (the harness's own test)
 ] {
   let tests = $dir | default $TESTS | path expand
-  let files = glob ($tests | path join "**" "*.test.nu") --exclude ["**/fixtures/**"] | sort
+  # Forward slashes: a backslash is an escape in a glob, so `path join` on
+  # Windows would make a pattern that fails to parse.
+  let files = glob (($tests | str replace -a '\\' '/') + "/**/*.test.nu") --exclude ["**/fixtures/**"] | sort
   let scratch = mktemp -d --tmpdir-path $nu.temp-dir "nu-tests.XXXXXX"
+  # Every child shell gets XDG directories under the scratch, so $nu.data-dir,
+  # $nu.cache-dir and the config dir are the run's own and a test that writes
+  # a cache (completions/brew.nu) or a plugin registry cannot reach the real
+  # ones. Nushell warns on stderr when that config directory is empty, and
+  # `nu -n` reads nothing there, so a placeholder keeps the output clean.
+  mkdir ($scratch | path join xdg config nushell) ($scratch | path join xdg data) ($scratch | path join xdg cache)
+  "# nu -n reads no config; this keeps Nushell from warning that the directory is empty\n" | save ($scratch | path join xdg config nushell config.nu)
+  let child_env = {
+    TEST_SCRATCH: $scratch
+    XDG_CONFIG_HOME: ($scratch | path join xdg config)
+    XDG_DATA_HOME: ($scratch | path join xdg data)
+    XDG_CACHE_HOME: ($scratch | path join xdg cache)
+  }
   let started = date now
 
   let results = $files
-    | each {|file| run-file $file $tests $pattern $scratch $verbose }
+    | each {|file| run-file $file $tests $pattern $child_env $verbose }
     | flatten
   let elapsed = (date now) - $started
   rm -rf $scratch
@@ -67,12 +82,12 @@ def main [
 
 # Run one file: list its tests, run those matching the pattern, print a line
 # for each. Returns the results as records {file, name, status, duration, ...}.
-def run-file [file: string, tests: string, pattern: any, scratch: string, verbose: bool]: nothing -> list {
+def run-file [file: string, tests: string, pattern: any, child_env: record, verbose: bool]: nothing -> list {
   let label = $file | path relative-to $tests | str replace -r '\.test\.nu$' ''
   let prelude = $"const NU_LIB_DIRS = ($LIB_DIRS | to nuon)\nsource ($file | to nuon)\n"
 
   # The list is the file's own word, not a regex over its text.
-  let listed = ^$nu.current-exe -n -c $"($prelude)scope commands | where name starts-with 'test ' | get name | to nuon" | complete
+  let listed = with-env $child_env { ^$nu.current-exe -n -c $"($prelude)scope commands | where name starts-with 'test ' | get name | to nuon" | complete }
   if $listed.exit_code != 0 {
     print $"(ansi red)✗ ($label)(ansi reset)  the file did not load"
     print ($listed.stderr | indent)
@@ -84,9 +99,9 @@ def run-file [file: string, tests: string, pattern: any, scratch: string, verbos
   # The name becomes a command call in the script below, so a quote in it
   # would open a string there — and pair with the next one, silently eating
   # the tests in between.
-  let odd = $names | where {|n| $n !~ '^test [A-Za-z0-9 ._+/-]+$' }
+  let odd = $names | where {|n| $n !~ '^test [A-Za-z0-9 ._+/=:,-]+$' }
   if ($odd | is-not-empty) {
-    print $"(ansi red)✗ ($label)(ansi reset)  a test name may hold letters, digits, spaces and ._+/- only"
+    print $"(ansi red)✗ ($label)(ansi reset)  a test name may hold letters, digits, spaces and ._+/=:,- only"
     print ($odd | str join "\n" | indent)
     return [{ file: $label, name: "", status: fail, duration: 0sec }]
   }
@@ -94,7 +109,7 @@ def run-file [file: string, tests: string, pattern: any, scratch: string, verbos
   # One `try` per test, generated: a command cannot be called by a name held
   # in a variable, so the script names each one. The verdict goes to a file,
   # leaving stdout to the tests.
-  let out = $scratch | path join $"($label | str replace -a '/' '_').nuon"
+  let out = $child_env.TEST_SCRATCH | path join $"($label | str replace -a '/' '_').nuon"
   let steps = $names | each {|name|
     let n = $name | to nuon
     [
@@ -114,7 +129,7 @@ def run-file [file: string, tests: string, pattern: any, scratch: string, verbos
     $"$results | to nuon | save -f ($out | to nuon)"
   ] | str join "\n"
 
-  let ran = with-env { TEST_SCRATCH: $scratch } { ^$nu.current-exe -n -c $script | complete }
+  let ran = with-env $child_env { ^$nu.current-exe -n -c $script | complete }
   if $ran.exit_code != 0 or not ($out | path exists) {
     print $"(ansi red)✗ ($label)(ansi reset)  the run did not finish"
     print ($ran.stdout + $ran.stderr | indent)
