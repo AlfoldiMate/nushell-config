@@ -100,6 +100,37 @@ export def "nu-complete filter" [partial: string]: list<record> -> list<record> 
   }
 }
 
+# Quote every value the line editor would otherwise split or misparse:
+# `theme use Catppuccin Macchiato` is two arguments, `"Catppuccin Macchiato"`
+# is one. Nushell quotes the paths its own file completer offers (backticks)
+# and carapace quotes its own, but a `string@completer` value and a spec
+# source are inserted verbatim (0.115.1 and 0.115.2, both menus), so this is
+# done once here for everything the engine and the menu hand out. Already
+# quoted values pass through, and so does carapace's trailing space, which
+# means "and a space after it". Matching still works on a quoted value: both
+# releases match `Cat` against `"Catppuccin …"` past the quote. Only a
+# candidate with no `kind` (a spec's) or `kind: value` (a custom completer's)
+# is touched: `commandline complete --detailed` also lists commands (`str
+# trim` is one word to the parser), flags, operators and quoted paths.
+const QUOTED = r##'^["'`]'##
+const NEEDS_QUOTES = r##'[ \t"'`|;()\[\]{}$#&]'##
+export def "nu-complete quote" []: list<record> -> list<record> {
+  let items = $in
+  if ($items | is-empty) { return $items }
+  # One regex over all the values first: a closure per item costs 30 µs, so
+  # 2000 formulae would pay 63 ms to find that none of them needs quoting.
+  if (($items | get value | into string | str join (char nl)) !~ $NEEDS_QUOTES) { return $items }
+  $items | each {|it|
+    if ($it.kind? | default "value") != "value" { return $it }
+    let v = ($it.value | into string)
+    let trailing = if ($v | str ends-with " ") { " " } else { "" }
+    let body = ($v | str trim --right --char " ")
+    if ($body =~ $QUOTED) or ($body !~ $NEEDS_QUOTES) { $it } else {
+      $it | update value (($body | to nuon) + $trailing)
+    }
+  }
+}
+
 def run-source [src: any, ctx: record, root: record]: nothing -> any {
   let kind = ($src | describe | str replace --regex '<.*' '')
   match $kind {
@@ -218,5 +249,5 @@ export def "nu-complete run" [spec: record, spans: list<string>]: nothing -> any
   if ($items | is-empty) and $is_flag and $fallback == "external" {
     return (nu-complete external $spans)
   }
-  $items
+  $items | nu-complete quote
 }

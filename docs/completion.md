@@ -60,6 +60,7 @@ description, style, kind — and rewrites:
 | `first ⌶`, `skip ⌶` | nothing, instead of files | slot wants a number |
 | `cd ⌶` in a folder with no subfolders, `cd nus⌶` with no local match | `..`, `~`, `-`, then zoxide's most-used directories (`~/.config/nushell` …) | slot wants a directory and Nushell found none; `zoxide query -l`, 12 ms, memoised 30 s |
 | a shadowed built-in | listed once | `uniq-by value` |
+| `theme use Cat⌶` → `"Catppuccin Macchiato"` | a value with a space is one argument | `nu-complete quote`: a `string@completer` value is inserted verbatim by Nushell (both releases, both menus), so the engine quotes what the parser would split, `to nuon` style, and matching still works past the quote. Paths (backticks, Nushell's) and carapace's values (its own `"…"`) arrive quoted already |
 | `ll \| where ⌶` | works | aliases are expanded before the pipeline runs |
 | everything else | exactly Nushell's answer | |
 
@@ -144,7 +145,10 @@ A `<source>` is a list of strings or `{value, description, style}` records, a
 closure `{|ctx| …}` (`ctx` = `{spans, partial, args, positionals, path}`),
 the string `"files"` for Nushell's path completion, or the name of an entry
 in `sources`. The engine filters with the user's `completions.algorithm` and
-`case_sensitive` — Nushell does not filter command-wide completer output.
+`case_sensitive` — Nushell does not filter command-wide completer output —
+and quotes a value the line would split (`nu-complete quote`), so a source
+returns raw values. Quoting 2000 formulae that need none costs 1.3 ms (one
+regex over the joined values); 463 theme names that do, 8 ms.
 
 ## Adding a tool
 

@@ -370,7 +370,10 @@ def dir-fallback [partial: string, position: int]: nothing -> list<record> {
 export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<record> {
   let position = if ($position | describe) == "int" { $position } else { $position.cursor }
   let buffer = ($buffer | str substring 0..<$position)
-  let base = (try { $buffer | commandline complete --detailed } catch { [] })
+  # A custom completer's values (`theme use Cat⌶` → `Catppuccin Macchiato`)
+  # arrive unquoted and would be inserted as two arguments; files and
+  # carapace's values arrive quoted already.
+  let base = (try { $buffer | commandline complete --detailed } catch { [] } | nu-complete quote)
   let segs = (segments $buffer)
   let seg = ($segs | last)
   let prefix = ($segs | drop 1 | str join "|" | str trim)
